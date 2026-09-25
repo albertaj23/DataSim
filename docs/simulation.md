@@ -4,7 +4,7 @@
 
 ## How a run works
 
-- **Server** (`server/src/lab/sim/`): `engine.ts` (singleton; holds the `playsync.lab` named lock for the whole run), `config.ts` (caps, presets, live-field whitelist), `device.ts` (virtual device), `truth.ts` (ground-truth query and repair), `metrics.ts`, `names.ts`, `emitter.ts` (socket room `sim`). API in `server/src/routes/sim.ts`.
+- **Server** (`server/src/lab/sim/`): `engine.ts` (singleton; holds the `datasim.lab` named lock for the whole run), `config.ts` (caps, presets, live-field whitelist), `device.ts` (virtual device), `truth.ts` (ground-truth query and repair), `metrics.ts`, `names.ts`, `emitter.ts` (socket room `sim`). API in `server/src/routes/sim.ts`.
 - **Devices are timestamps, not timers.** One 100 ms loop steps every device (cool-down, heartbeat, release), schedules arrivals, runs the expire sweep (1 s), the ground-truth query (500 ms) and emits a tick (250 ms; device *diffs* only; `seq` guarded on the client).
 - **Arrivals:** BURST = a wave of all idle devices every 6 s; STEADY = Poisson per household at `ratePerSec`; RUSH = the rate ramps from 10% to 100% over the run.
 - **Claims** use `labPool` connections (pool wait is measured as part of time-to-play, so starvation is visible). The strategy is read per press, so a live switch affects new presses only. Any of the eight strategies can be used (REDIS_LEASE needs Redis; the lab and simulation flush its slot keys on reset).

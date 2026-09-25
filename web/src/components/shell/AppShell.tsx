@@ -42,7 +42,7 @@ function Frame({ children }: { children: ReactNode }) {
   useShortcut('mod+b', toggle);
   const item = itemFor(pathname);
   const meta = usePageMetaValue();
-  useEffect(() => { document.title = `${meta.title ?? item?.label ?? (pathname === '/device' ? 'This device' : 'PlaySync')} · PlaySync`; }, [meta.title, item, pathname]);
+  useEffect(() => { document.title = `${meta.title ?? item?.label ?? (pathname === '/device' ? 'This device' : 'DataSim')} · DataSim`; }, [meta.title, item, pathname]);
   return (
     <div className="min-h-screen">
       <a href="#main" className="skip-link">Skip to content</a>

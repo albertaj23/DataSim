@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type SidebarPref = 'expanded' | 'rail';
 export type SidebarMode = 'expanded' | 'rail' | 'hidden';
-const KEY = 'playsync-sidebar';
+const KEY = 'datasim-sidebar';
 
 export function readPref(storage: Pick<Storage, 'getItem'> | null = safeStorage()): SidebarPref {
   try { return storage?.getItem(KEY) === 'rail' ? 'rail' : 'expanded'; } catch { return 'expanded'; }

@@ -5,7 +5,7 @@
 | **Course** | Database Management Systems |
 | **Instructor** | _<instructor>_ |
 | **Date** | 25 September 2026 |
-| **Repository** | `playsync/` (MySQL 8.4 + Node.js + React) |
+| **Repository** | `datasim/` (MySQL 8.4 + Node.js + React) |
 
 ### Contributors
 
@@ -19,19 +19,19 @@
 
 ## 1. Project Title
 
-**PlaySync: Keeping Many Devices in Agreement — Enforcing a Per-Account Stream Limit with Relational Concurrency Control**
+**DataSim: A Friendly Simulation Lab for Relational Database Systems**
 
-*Subtitle:* A multi-device music playback coordinator built on MySQL/InnoDB, used as a laboratory for comparing transaction isolation levels, locking and optimistic strategies.
+*Subtitle:* A scenario-driven platform for exploring concurrency, lost updates, isolation levels, locking, transactions, constraints, and scalability. Music playback provides the first shared-user example.
 
 ---
 
 ## 2. Introduction and Background
 
-Music and video streaming services let one account be signed in on many devices (phone, laptop, tablet, browser) but limit how many of them can **play at the same time**. When a second device presses Play, the app must either refuse, ask "Play here instead?", or move the music across. Every device must then agree, in real time, on which one is playing.
+DataSim presents database systems through approachable scenarios rather than abstract tables alone. Its first scenario uses a music service: one listener account can be signed in on many devices, while the database limits how many can **play at the same time**. When a second device presses Play, the app must refuse, ask "Play here instead?", or move the music across. Every device must then agree, in real time, on which one is playing.
 
 Behind this simple behaviour is a classic database problem. Several devices read the same shared state ("how many streams are active on this account?") and then write based on what they read. If two devices do this at the same instant, both can see "nobody is playing" and both can start. The account ends up over its limit. This is the **write skew / phantom** anomaly studied in the transactions and concurrency-control part of a DBMS course.
 
-PlaySync is a working multi-device player that turns this real-world scenario into a measurable experiment. The same "press Play" operation is implemented with six different concurrency-control strategies:
+DataSim is a working simulation lab that turns this real-world scenario into a measurable experiment. The same "press Play" operation is implemented with six different concurrency-control strategies:
 
 - no protection;
 - a plain transaction;

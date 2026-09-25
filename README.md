@@ -1,14 +1,14 @@
-# PlaySync
+# DataSim
 
-**Multi-device playback coordination, built as a concurrency-control lab on MySQL/InnoDB.**
+**DataSim is a friendly simulation lab for relational database behavior.**
 
-> **Five-line summary:** PlaySync models one account playing music across several devices.
-> It makes the stream-limit invariant measurable under real concurrent MySQL transactions.
-> Compare eight protection strategies, inspect locks and deadlocks, and watch a live simulation.
-> The React UI turns database schedules into an explorable control room.
+> **Five-line summary:** DataSim turns DBMS concepts into scenarios you can run through a clear UI.
+> Explore concurrency, lost updates, isolation levels, locking, transactions, constraints, and scale.
+> Music is the first scenario: shared listener accounts, many devices, and one stream-limit invariant.
+> Compare protection strategies, inspect locks and deadlocks, and watch simulated users in real time.
 > Run it locally with Docker, Node 20+, and `npm run dev`.
 
-![PlaySync simulation](docs/simulation.gif)
+![DataSim simulation](docs/simulation.gif)
 
 ### Headline results
 
@@ -24,7 +24,7 @@ Harshest stream-limit cell: 64 concurrent claims, 1 account, 20 ms race delay, 1
 | OPTIMISTIC | 0 | **52.29 ms** | **1188.8 rps** |
 | CONSTRAINT | 0 | 55.44 ms | 943.91 rps |
 
-A tiny music app: one account, several devices (MacBook, iPhone, iPad, Browser), and a per-account limit on how many may play at once. Underneath the friendly UI it is a laboratory. It protects one database invariant, measures how six different concurrency-control strategies protect (or fail to protect) it, and lets you watch the machinery work: a lock table, a wait-for graph, deadlocks, rollbacks, and a live simulated crowd.
+DataSim starts with a concrete music scenario: one listener account, several devices (MacBook, iPhone, iPad, Browser), and a per-account limit on simultaneous playback. Underneath the friendly UI is a reusable database laboratory. It measures how concurrency-control strategies protect an invariant, exposes isolation and locking behavior, demonstrates lost updates and constraints, and scales the same scenario to a live crowd of simulated users.
 
 Everything runs locally and for free: MySQL 8.4 in Docker, Node 20+, React. There is **no authentication** (you pick an account by username; login is out of scope) and no paid service, API key or telemetry.
 
@@ -402,7 +402,7 @@ HAVING COUNT(*) > a.max_streams;
 
 `violations = Σ(active − max_streams)`: the total number of excess concurrently-playing sessions.
 - **Lost-update definition:** `lost = succeeded − finalCount` (increments the client was *told* succeeded but that are missing). A CAS worker exhausting its 500-attempt cap reports an *error*, not a lost update.
-- **The named lab lock.** Only one experiment (UI, CLI bench, tests, simulation) runs against the lab accounts at a time, enforced by `GET_LOCK('playsync.lab', 0)`. A second attempt fails immediately with 409 BUSY, shown in the UI as "Another experiment is running."
+- **The named lab lock.** Only one experiment (UI, CLI bench, tests, simulation) runs against the lab accounts at a time, enforced by `GET_LOCK('datasim.lab', 0)`. A second attempt fails immediately with 409 BUSY, shown in the UI as "Another experiment is running."
 - **What `errors` means.** Not a violation: a request failed outright (most often `withRetry`'s 5 attempts exhausted after deadlocks/timeouts, or a CAS loop hit its cap). `violations = 0` with some `errors` is still *correct*: the strategy refused some requests rather than corrupt the invariant.
 - **Independent variables:** strategy, isolation, concurrency (2–100), contention (1 vs 16 accounts), race delay, mode (NORMAL/TAKEOVER). **Dependent:** violations, grants/rejections, retries, deadlocks, lock timeouts, p50/p95, throughput.
 
@@ -521,7 +521,7 @@ Any single `/lab/*` or Stress-test click also writes to `experiment_run`, so Sta
 
 Stats for nerds → **Stepper**. Two real MySQL transactions (T1, T2) run one statement at a time from the browser.
 
-**Engine** (`server/src/lab/stepper/engine.ts`, a singleton): T1, T2 and an admin connection are dedicated, unpooled connections; it records each `CONNECTION_ID()` and sets `innodb_lock_wait_timeout = 30` on T1/T2. A step is sent without blocking the HTTP response: if it hasn't finished within 300 ms, the route answers `WAITING` and the real outcome is pushed later over the `stepper` socket room. A transaction refuses a new Step while its previous step is still WAITING (`busy`). `load()`/`reset()` first end any open transaction (ROLLBACK, or KILL + reconnect if a step is WAITING) and bump a **generation counter** so a stale in-flight step cannot write into the new scenario. The stepper uses its own named lock `playsync.stepper`, held only around load/reset, and it never touches the unique index.
+**Engine** (`server/src/lab/stepper/engine.ts`, a singleton): T1, T2 and an admin connection are dedicated, unpooled connections; it records each `CONNECTION_ID()` and sets `innodb_lock_wait_timeout = 30` on T1/T2. A step is sent without blocking the HTTP response: if it hasn't finished within 300 ms, the route answers `WAITING` and the real outcome is pushed later over the `stepper` socket room. A transaction refuses a new Step while its previous step is still WAITING (`busy`). `load()`/`reset()` first end any open transaction (ROLLBACK, or KILL + reconnect if a step is WAITING) and bump a **generation counter** so a stale in-flight step cannot write into the new scenario. The stepper uses its own named lock `datasim.stepper`, held only around load/reset, and it never touches the unique index.
 
 **Lock inspector** (`GET /api/lab/locks`, polled every 500 ms): joins `performance_schema.data_locks` and `data_lock_waits` to `threads`, maps connection ids to T1/T2, and the UI explains the modes: `IX` (multi-granularity intention lock), `X,REC_NOT_GAP` (record lock), `S`/`X` next-key, `X,GAP`, `X,INSERT_INTENTION`, and FK checks taking `S,REC_NOT_GAP` on parent rows. Deadlocks show InnoDB's own `LATEST DETECTED DEADLOCK` text (from `SHOW ENGINE INNODB STATUS`) and the victim.
 
@@ -548,7 +548,7 @@ The stepper uses accounts `step_a` and `step_b`, reset before each load. The lea
 
 ### 10.1 How a run works
 
-- **Server** (`server/src/lab/sim/`): `engine.ts` (singleton; holds the `playsync.lab` lock for the whole run: while a simulation runs, `/stress`, the bench and lab tests get 409), `config.ts` (caps, presets, live-field whitelist, friendly strategy names), `device.ts` (virtual device), `truth.ts` (ground-truth query and repair), `metrics.ts`, `names.ts`, `emitter.ts`. API in `routes/sim.ts`.
+- **Server** (`server/src/lab/sim/`): `engine.ts` (singleton; holds the `datasim.lab` lock for the whole run: while a simulation runs, `/stress`, the bench and lab tests get 409), `config.ts` (caps, presets, live-field whitelist, friendly strategy names), `device.ts` (virtual device), `truth.ts` (ground-truth query and repair), `metrics.ts`, `names.ts`, `emitter.ts`. API in `routes/sim.ts`.
 - **Devices are timestamps, not timers.** One 100 ms loop steps every device (cool-down, heartbeat, release), schedules arrivals, runs the expire sweep (1 s) and the ground-truth query (500 ms), and emits a tick (250 ms; device *diffs* only; the client drops ticks with a lower `seq`).
 - **Arrivals:** BURST = a wave of all idle devices every 6 s; STEADY = Poisson per household at `ratePerSec`; RUSH = the rate ramps 10% → 100% over the run.
 - **Claims** use `labPool` connections (pool wait counts toward time-to-play, so starvation is visible); the strategy is read per press, so a live switch affects new presses only. Isolation is applied **only** to the "Transaction, no locks" strategy (applying it to the others silently weakened SERIALIZABLE and caused a real false violation during development).
@@ -760,10 +760,10 @@ Deliberate departures from the original plan (kept; treat as decisions):
 13. **UI structure differs from the original plan's `/wall`, `/lab` and `/index-lab`:** the index experiment is the **Index** tab of Stats for nerds, not a page; friendly pages (`/devices` = the device wall, `/device`, `/stress`, `/sim`) plus **Stats for nerds** for everything technical (the full-control Lab is a nerds tab; "Stress data" became **Experiment runs** reading `GET /lab/runs`).
 14. Web unit tests exist (vitest in `web/`); `npm test` runs both workspaces.
 15. `experiment_run` gained `wall_ms`, `batch_id`, `trial`, `source`, `detail`; `batch_id` groups one invocation and is not a key. Later, `source` gained `SIM` (after this change run `npm run db:reset`, or `ALTER TABLE experiment_run MODIFY source ENUM('UI','API','BENCH','TEST','SIM') NOT NULL DEFAULT 'API'`).
-16. A cross-process **MySQL named lock** (`playsync.lab`) replaces an in-process flag so the CLI bench, the test suite, the UI and the simulation can't clash on the lab accounts.
+16. A cross-process **MySQL named lock** (`datasim.lab`) replaces an in-process flag so the CLI bench, the test suite, the UI and the simulation can't clash on the lab accounts.
 17. Lost-update `lost` is `succeeded − finalCount`, not `N − final` (a CAS worker exhausting retries is an error, not a lost update). The CAS variant caps at 500 attempts.
 18. The bench prints one progress line per trial but all of a matrix cell's lines appear together when that cell completes.
-19. The Stepper uses its own named lock `playsync.stepper`, never touches the unique index, and has 8 scenarios (`ORDERED_LOCKING` is selectable on its own; `OPTIMISTIC_CAS` steps show `{v}` until run). The reaper skips its accounts. `load()`/`reset()` end open transactions first.
+19. The Stepper uses its own named lock `datasim.stepper`, never touches the unique index, and has 8 scenarios (`ORDERED_LOCKING` is selectable on its own; `OPTIMISTIC_CAS` steps show `{v}` until run). The reaper skips its accounts. `load()`/`reset()` end open transactions first.
 20. `POST /lab/race` (the Stress test) accepts an optional `batchId` so "Race them all" groups its calls under one batch.
 21. The simulation generates household/device names **on the server** (deterministic), and BURST arrival repeats as a wave every 6 s. `GET /lab/sim/state` also returns `seriesAll` so the timeline survives a reload.
 22. The Simulation's original three-column layout and the phone "Relay bottom sheet" were superseded by the chapter layout (essentials inline, "More conditions" as tabs, live controls in the floating bar).

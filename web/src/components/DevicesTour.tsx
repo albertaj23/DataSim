@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { Hand, Repeat, Sparkles, Microscope } from 'lucide-react';
 import { FeatureTour, type TourStep } from './watermelon/feature-tour';
 
-const KEY = 'playsync-tour-devices';
+const KEY = 'datasim-tour-devices';
 const seen = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return true; } };
 const remember = () => { try { localStorage.setItem(KEY, '1'); } catch { /* ignore */ } };
 

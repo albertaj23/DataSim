@@ -19,7 +19,7 @@ export async function readLocks(admin: Queryable, connToLabel: (connId: number) 
             l.LOCK_TYPE, l.LOCK_MODE, l.LOCK_STATUS, l.LOCK_DATA
      FROM performance_schema.data_locks l
      JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID
-     WHERE l.OBJECT_SCHEMA = 'playsync'`,
+     WHERE l.OBJECT_SCHEMA = 'datasim'`,
   );
   const [waitRows] = await admin.query<RowDataPacket[]>(
     `SELECT rt.PROCESSLIST_ID AS waiting_conn, bt.PROCESSLIST_ID AS blocking_conn

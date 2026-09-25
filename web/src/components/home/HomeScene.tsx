@@ -7,21 +7,21 @@ import { StickyStage } from '../story/StickyStage';
 import { GeoMascot } from './GeoMascot';
 
 const STEPS = [
-  { icon: Users, title: 'One account, many screens', text: 'Your music is signed in on a laptop, a phone, a tablet and a browser, all at once.' },
-  { icon: Hand, title: 'One turn at a time', text: 'Start music on a second screen and it politely asks: "Want the music here instead?"' },
-  { icon: ShieldCheck, title: 'Fair, even in a stampede', text: 'Even if lots of screens tap Play at the very same moment, only the allowed number get in.' },
+  { icon: Users, title: 'A friendly lab for real DBMS ideas', text: 'DataSim turns database concepts into visible scenarios you can run, pause, compare, and repeat.' },
+  { icon: Hand, title: 'Music makes the model tangible', text: 'Start playback across shared listener accounts and watch transactions coordinate devices in real time.' },
+  { icon: ShieldCheck, title: 'From one account to a crowd', text: 'Scale the same scenario from a few screens to thousands of virtual listeners while correctness stays measurable.' },
 ];
 export const HOME_CUTS = [0.08, 0.36, 0.68];
 
 function Hero({ headline }: { headline?: React.RefObject<HTMLHeadingElement> }) {
   return (
     <div className="reveal">
-      <p className="mb-3 inline-block rounded-full bg-violet-500/12 px-3 py-1 text-sm font-semibold text-violet-400">Hi, I'm Melo, your music sidekick 🍉</p>
-      <h1 ref={headline} className="text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl">Listen anywhere. One screen at a time.</h1>
-      <p className="mt-4 text-lg leading-relaxed text-stone-500">A music app that keeps all your devices in agreement about who's playing, even when they all try at once.</p>
+      <p className="mb-3 inline-block rounded-full bg-violet-500/12 px-3 py-1 text-sm font-semibold text-violet-400">Hi, I'm Melo, your database lab guide 🍉</p>
+      <h1 ref={headline} className="text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl">Make database behavior visible.</h1>
+      <p className="mt-4 text-lg leading-relaxed text-stone-500">DataSim is a simulation lab for transactions, concurrency, locks, constraints, isolation, and scale. Music is the first scenario: shared listeners, many devices, one database.</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
-        <Link to="/devices" viewTransition={FEATURES.viewTransitions} className="rounded-2xl bg-violet-600 px-6 py-3 font-semibold text-[#fff] shadow-lg shadow-violet-600/30 transition-all hover:-translate-y-0.5 hover:bg-violet-500 active:scale-95">Play with my devices 🎧</Link>
-        <Link to="/stress" className="rounded-2xl bg-fg/6 px-6 py-3 font-semibold text-stone-700 ring-1 ring-fg/10 transition-all hover:-translate-y-0.5 hover:bg-fg/10 active:scale-95">Try the stampede ⚡</Link>
+        <Link to="/devices" viewTransition={FEATURES.viewTransitions} className="rounded-2xl bg-violet-600 px-6 py-3 font-semibold text-[#fff] shadow-lg shadow-violet-600/30 transition-all hover:-translate-y-0.5 hover:bg-violet-500 active:scale-95">Explore a music scenario 🎧</Link>
+        <Link to="/stress" className="rounded-2xl bg-fg/6 px-6 py-3 font-semibold text-stone-700 ring-1 ring-fg/10 transition-all hover:-translate-y-0.5 hover:bg-fg/10 active:scale-95">Run a database race ⚡</Link>
       </div>
     </div>
   );

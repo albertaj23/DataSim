@@ -1,5 +1,5 @@
 {
-  "name": "@playsync/server",
+  "name": "@datasim/server",
   "private": true,
   "version": "0.1.0",
   "type": "module",

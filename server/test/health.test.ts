@@ -11,6 +11,6 @@ describe('GET /api/health', () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.db.version).toMatch(/^8\.4\./);
-    expect(res.body.db.name).toBe('playsync');
+    expect(res.body.db.name).toBe('datasim');
   });
 });

@@ -6,7 +6,7 @@ import { cx } from '../ui';
 const ICONS: Record<string, typeof Flame> = {
   'break-it': Flame, 'family-fight': Users, 'release-night': Rocket, 'flaky-wifi': WifiOff, crash: Bug, 'strict-slow': Hourglass,
 };
-const KEY = 'playsync-sim-sidebar';
+const KEY = 'datasim-sim-sidebar';
 const read = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } };
 
 interface Props { presets: Preset[]; activeId: string | null; onPick: (p: Preset) => void; disabled: boolean }

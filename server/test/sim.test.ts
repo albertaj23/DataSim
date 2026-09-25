@@ -130,8 +130,8 @@ describe('teardown and persistence', () => {
     await runFor({ strategy: 'NAIVE' }, 2000);
     expect(await count(`SELECT max_streams FROM account WHERE account_id = ${id}`)).toBe(3);
     expect(await count(`SELECT COUNT(*) FROM playback_session WHERE account_id = ${id} AND status IN ('PLAYING','PAUSED')`)).toBe(0);
-    expect(await count(`SELECT GET_LOCK('playsync.lab', 0)`)).toBe(1);
-    await appPool.query(`SELECT RELEASE_LOCK('playsync.lab')`);
+    expect(await count(`SELECT GET_LOCK('datasim.lab', 0)`)).toBe(1);
+    await appPool.query(`SELECT RELEASE_LOCK('datasim.lab')`);
     await appPool.query('UPDATE account SET max_streams = 1 WHERE account_id = ?', [id]);
   }, LONG);
 

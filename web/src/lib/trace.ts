@@ -22,7 +22,7 @@ export interface TraceEntry {
   summary: string;
 }
 
-const KEY = 'playsync.trace';
+const KEY = 'datasim.trace';
 const MAX = 400;
 
 let entries: TraceEntry[] = load();

@@ -14,7 +14,7 @@ export function TopBar({ focus }: { focus: boolean }) {
   const { width, toggle, setSearchOpen } = useSidebar();
   const { theme, toggle: toggleTheme } = useTheme();
   const meta = usePageMetaValue();
-  const page = meta.title ?? itemFor(pathname)?.label ?? 'PlaySync';
+  const page = meta.title ?? itemFor(pathname)?.label ?? 'DataSim';
   const phone = width < 768;
   const line = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);

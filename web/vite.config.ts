@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 // from a phone on the LAN (it only needs to reach the Vite port).
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/playsync/',
+  base: '/datasim/',
   server: {
     port: 5173,
     proxy: {

@@ -1,4 +1,4 @@
-# PlaySync — Phase 5.5: Simulation Control Room
+# DataSim — Phase 5.5: Simulation Control Room
 
 > **Status update (2026-09-25): built (M1–M4).** Presentation deviates: the `/sim` layout became a six-chapter story (see `docs/implementation/phase-nav-ux.md` §8.3), and the phone Relay bottom sheet was dropped. Design, metrics and limits: `docs/simulation.md`.
 
@@ -6,7 +6,7 @@ Save as `docs/implementation/phase-sim.md` and read it together with `docs/PLAN.
 
 ## 0. Goal in one paragraph
 
-Add a presenter-grade page, `/sim`, where the demonstrator sets system conditions on a control panel (the **Relay**) and then watches a crowd of simulated listeners use PlaySync in real time (the **Stage**).
+Add a presenter-grade page, `/sim`, where the demonstrator sets system conditions on a control panel (the **Relay**) and then watches a crowd of simulated listeners use DataSim in real time (the **Stage**).
 
 Every simulated press of Play is a **real transaction** through the existing playback service and strategies. Nothing is faked on the client. Every violation shown comes from a live SQL invariant query, not from client counters.
 
@@ -38,7 +38,7 @@ The signature demo moment is:
 
 - Raw parameterized SQL only, with no ORM. Follow the global lock order `account -> device -> playback_session -> playback_event`.
 - Publish to sockets only **after COMMIT**.
-- The simulator takes the named lock `playsync.lab` for the whole run. While a simulation runs, `/stress`, the bench and lab tests get `409 BUSY`, and vice versa. Surface this in the UI as "Another experiment is running."
+- The simulator takes the named lock `datasim.lab` for the whole run. While a simulation runs, `/stress`, the bench and lab tests get `409 BUSY`, and vice versa. Surface this in the UI as "Another experiment is running."
 - The simulator uses the lab accounts (`lab_01..lab_16`, up to 64 devices each) and never touches `brij`, `step_a` or `step_b`.
 - **Two-audience rule.** `/sim` is a presenter page.
   - By default it uses friendly language: no ids, HTTP codes, lease timestamps or strategy identifiers.
@@ -289,7 +289,7 @@ Mark these tests slow, like `lab.test.ts`, so `test:fast` skips them.
 5. `crashPct = 100` for a short run leaves no orphan sessions and no half-written events (checks atomicity).
 6. `offlinePct = 100` with a 5 s lease means sessions expire through the sim sweep, and the global reaper's skip rule is unchanged.
 7. Repair returns every household to within its limit and writes events.
-8. Stop and shutdown release `playsync.lab`, restore `max_streams` and the strategy, and leave no PLAYING sessions on the simulation's accounts.
+8. Stop and shutdown release `datasim.lab`, restore `max_streams` and the strategy, and leave no PLAYING sessions on the simulation's accounts.
 9. A finished run writes an `experiment_run` row with `source = 'sim'`.
 10. Start during a held lab lock returns 409 BUSY.
 

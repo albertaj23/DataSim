@@ -1,4 +1,4 @@
-# UI Phase: "Friendly listening room" (making PlaySync playful and easy)
+# UI Phase: "Friendly listening room" (making DataSim playful and easy)
 
 Read the project README first (especially the frontend design section and the dark redesign decision). This plan changes look, copy and motion only. **No API, schema or strategy changes.**
 
@@ -196,7 +196,7 @@ Browser (desktop 1280 and 375 px, both themes):
 1. **Theme**: dark-only warm redesign, or light + dark with a toggle (recommended, D4)?
 2. **Mascot**: device characters only (recommended), or also a named mascot (a watermelon slice)?
 3. **Scope**: friendly pages only, or also a light refresh of the nerd pages (recommended: light touch, §5.5)?
-4. **Branding**: keep the name "PlaySync" and the ♪ mark, or restyle the logo?
+4. **Branding**: keep the name "DataSim" and the ♪ mark, or restyle the logo?
 5. **Display font**: Fredoka (bubbly), Nunito (soft, safer), or keep Inter only?
 6. **Ordering vs. `/sim`**: build this UI phase first (so `/sim` inherits avatars, verdict cards and motion presets, recommended) or after M1 of the simulator?
 7. **Licence check**: OK to vendor the listed Watermelon components (open source, but I have not yet verified the licence text)?

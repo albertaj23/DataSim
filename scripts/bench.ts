@@ -134,7 +134,7 @@ interface StreamRow extends RaceResult { label: string; runId: number; trial: nu
 interface LostRow extends LostUpdateResult { runId: number; trial: number; batchId: string }
 
 async function main() {
-  console.log(`playsync bench: ${grandTotal} trials planned (stream ${streamTotal}, lost-update ${lostTotal})`);
+  console.log(`datasim bench: ${grandTotal} trials planned (stream ${streamTotal}, lost-update ${lostTotal})`);
   if (config.DEFAULT_STRATEGY === 'CONSTRAINT') {
     console.log(
       `NOTE: the server's DEFAULT_STRATEGY is CONSTRAINT. This bench restores the unique index for ` +

@@ -14,7 +14,7 @@ const EnvSchema = z.object({
   DB_PORT: z.coerce.number().int().positive().default(3307),
   DB_USER: z.string().default('root'),
   DB_PASSWORD: z.string().default('root'),
-  DB_NAME: z.string().default('playsync'),
+  DB_NAME: z.string().default('datasim'),
   PORT: z.coerce.number().int().positive().default(4000),
   LEASE_MS: z.coerce.number().int().positive().default(15_000),
   HEARTBEAT_MS: z.coerce.number().int().positive().default(5_000),

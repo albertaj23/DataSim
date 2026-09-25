@@ -1,5 +1,5 @@
--- PlaySync schema (MySQL 8.4, InnoDB). See docs/er.md and docs/normalization.md.
--- Loaded by the Docker entrypoint into the `playsync` database.
+-- DataSim schema (MySQL 8.4, InnoDB). See docs/er.md and docs/normalization.md.
+-- Loaded by the Docker entrypoint into the `datasim` database.
 
 SET NAMES utf8mb4;
 

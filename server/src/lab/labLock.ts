@@ -4,7 +4,7 @@
 
 import { withNamedLock, NamedLockBusyError } from '../db/namedLock.js';
 
-const LOCK_NAME = 'playsync.lab';
+const LOCK_NAME = 'datasim.lab';
 
 /** Thrown when another process or request already holds the lab lock. */
 export class LabBusyError extends Error {

@@ -1,8 +1,8 @@
 {
-  "name": "playsync",
+  "name": "datasim",
   "private": true,
   "version": "0.1.0",
-  "description": "Multi-device playback coordination as a concurrency-control lab (MySQL/InnoDB).",
+  "description": "A friendly database simulation lab for concurrency, transactions, and scale.",
   "workspaces": [
     "server",
     "web"
@@ -11,7 +11,7 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d --wait",
-    "db:shell": "docker compose exec mysql mysql -uroot -proot playsync",
+    "db:shell": "docker compose exec mysql mysql -uroot -proot datasim",
     "dev": "concurrently -n server,web -c blue,magenta \"npm -w server run dev\" \"npm -w web run dev\"",
     "dev:server": "npm -w server run dev",
     "dev:web": "npm -w web run dev",

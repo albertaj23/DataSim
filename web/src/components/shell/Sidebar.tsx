@@ -63,7 +63,7 @@ export function Sidebar() {
             {!collapsed && (
               <NavLink to="/" className="flex items-center gap-2">
                 <Mascot mood="happy" size={38} />
-                <span className="font-display text-xl font-semibold tracking-tight text-stone-900">PlaySync</span>
+                <span className="font-display text-xl font-semibold tracking-tight text-stone-900">DataSim</span>
               </NavLink>
             )}
             <button onClick={toggle} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={expanded}

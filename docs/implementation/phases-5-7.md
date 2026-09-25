@@ -22,7 +22,7 @@ The stepper is inherently technical, so it is a **Stats-for-nerds tab: "Stepper"
 - Three dedicated, **unpooled** connections created with `mysql.createConnection(base options)`:
   - **T1** and **T2**: `SET SESSION innodb_lock_wait_timeout = 30`. Record `SELECT CONNECTION_ID()` for each.
   - **admin**: never inside a transaction. Used for lock inspection, `KILL`, `SHOW ENGINE INNODB STATUS` and scenario resets.
-- The state is a singleton (only one stepper session at a time; guard with the Phase 4 **lab lock**, or a separate named lock `playsync.stepper`, so the stepper and the lab can't collide on shared rows).
+- The state is a singleton (only one stepper session at a time; guard with the Phase 4 **lab lock**, or a separate named lock `datasim.stepper`, so the stepper and the lab can't collide on shared rows).
 - **Load a scenario:**
   1. Recreate T1 and T2 if they were killed.
   2. Reset the stepper accounts `step_a` and `step_b`: delete their sessions and events, `state_version = 0`, `max_streams = 1`.
@@ -39,7 +39,7 @@ The stepper is inherently technical, so it is a **Stats-for-nerds tab: "Stepper"
 - **Reset:** roll back both, reload the scenario.
 
 ### Lock inspector: `server/src/lab/stepper/locks.ts`
-Use the two queries from PLAN §8.3 verbatim (`performance_schema.data_locks` joined to `threads`, filtered on `OBJECT_SCHEMA = 'playsync'`, plus `data_lock_waits`). Map `conn_id` to `T1`/`T2`/`other`. Return:
+Use the two queries from PLAN §8.3 verbatim (`performance_schema.data_locks` joined to `threads`, filtered on `OBJECT_SCHEMA = 'datasim'`, plus `data_lock_waits`). Map `conn_id` to `T1`/`T2`/`other`. Return:
 
 ```ts
 { locks: { txn, table, index, type, mode, status, data }[], waits: { waiting: 'T1'|'T2', blocking: 'T1'|'T2'|'other' }[], cycle: boolean }

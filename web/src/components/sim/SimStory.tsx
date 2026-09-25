@@ -32,7 +32,7 @@ const CHAPTERS: ChapterDef[] = [
   { id: 'results', title: 'The verdict', kind: 'work', glyph: 'ring' },
   { id: 'why', title: 'Why did this happen?', kind: 'work', glyph: 'slice' },
 ];
-const SEEN = 'playsync-sim-seen';
+const SEEN = 'datasim-sim-seen';
 
 export default function SimStory() {
   const c = useSimControl();

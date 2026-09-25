@@ -92,8 +92,8 @@ export default function NerdsPage() {
           <Link to="/devices" className="mb-2 inline-block font-sans text-sm font-medium text-violet-400 hover:underline">← Back to the friendly version</Link>
           <h1 className="font-mono text-2xl font-semibold tracking-tight text-stone-900">stats for nerds</h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-600">
-            What the friendly pages hide: every request they sent, what the server answered, the live database state,
-            and checks the server runs against MySQL after every change.
+            The technical side of the simulation lab: concurrency, lost updates, isolation levels, locks, transactions,
+            constraints, and scalability, verified against MySQL after every scenario.
           </p>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs text-stone-500">

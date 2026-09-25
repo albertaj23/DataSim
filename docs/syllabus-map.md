@@ -1,6 +1,6 @@
 # Syllabus map
 
-Where each module/topic of the course shows up in PlaySync, linked to the concrete file, test or page that demonstrates it.
+Where each module/topic of the course shows up in DataSim, linked to the concrete file, test or page that demonstrates it.
 
 | Module / topic | Where it shows up | Evidence |
 |---|---|---|

@@ -1,4 +1,4 @@
-const KEY = 'playsync-scroll';
+const KEY = 'datasim-scroll';
 
 function load(): Record<string, number> {
   try { return JSON.parse(sessionStorage.getItem(KEY) ?? '{}') as Record<string, number>; } catch { return {}; }

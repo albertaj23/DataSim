@@ -59,13 +59,13 @@ New file `server/src/lab/labLock.ts`:
 
 ```ts
 export class LabBusyError extends Error {}
-/** Runs fn while holding GET_LOCK('playsync.lab'). Throws LabBusyError immediately if another
+/** Runs fn while holding GET_LOCK('datasim.lab'). Throws LabBusyError immediately if another
  *  process/request holds it. The lock lives on one dedicated connection, released in finally. */
 export async function withLabLock<T>(fn: () => Promise<T>): Promise<T>
 ```
 
-- Take a connection from `appPool`. Run `SELECT GET_LOCK('playsync.lab', 0) AS got`. If `got !== 1`, release the connection and throw `LabBusyError`.
-- In `finally`: `SELECT RELEASE_LOCK('playsync.lab')`, then release the connection. A named lock is tied to the session, so if the process dies MySQL frees it automatically. Say so in a comment.
+- Take a connection from `appPool`. Run `SELECT GET_LOCK('datasim.lab', 0) AS got`. If `got !== 1`, release the connection and throw `LabBusyError`.
+- In `finally`: `SELECT RELEASE_LOCK('datasim.lab')`, then release the connection. A named lock is tied to the session, so if the process dies MySQL frees it automatically. Say so in a comment.
 - `routes/lab.ts`: remove the `running` flag. Map `LabBusyError` → `ServiceError(409, 'BUSY', 'another experiment is running (UI, bench or tests)')`.
 - **Tests must use it too.** The lab tests in Step 6 run inside `withLabLock`. If a developer is running the bench at the same time, the test fails fast with a clear message instead of producing garbage.
 

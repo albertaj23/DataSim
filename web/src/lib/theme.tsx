@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Theme = 'light' | 'dark';
-const KEY = 'playsync-theme';
+const KEY = 'datasim-theme';
 const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'dark', toggle: () => undefined });
 
 function initial(): Theme {

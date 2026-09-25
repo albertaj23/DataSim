@@ -1,4 +1,4 @@
--- PlaySync seed data. Rows are generated with WITH RECURSIVE where there is a pattern.
+-- DataSim seed data. Rows are generated with WITH RECURSIVE where there is a pattern.
 -- Expected counts: account 19 (1 demo + 16 lab + 2 stepper), device 1032 (4 + 16*64 + 2*2), song 12.
 
 SET NAMES utf8mb4;

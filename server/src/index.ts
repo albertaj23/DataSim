@@ -18,7 +18,7 @@ const stopReaper = startReaper(config.REAPER_MS);
 
 // Bind to 0.0.0.0 so a phone on the same LAN can reach the API.
 server.listen(config.PORT, '0.0.0.0', () => {
-  console.log(`playsync server listening on http://0.0.0.0:${config.PORT} (strategy ${config.DEFAULT_STRATEGY}, reaper every ${config.REAPER_MS} ms)`);
+  console.log(`datasim server listening on http://0.0.0.0:${config.PORT} (strategy ${config.DEFAULT_STRATEGY}, reaper every ${config.REAPER_MS} ms)`);
 });
 
 async function shutdown() {

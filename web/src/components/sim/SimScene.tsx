@@ -32,11 +32,11 @@ export function SimScene() {
   const hero = (
     <div className="reveal">
       <h1 className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">Simulation control room</h1>
-      <p className="mt-3 text-lg text-stone-500">A whole city of listeners, pressing Play on real requests to a real database.</p>
+      <p className="mt-3 text-lg text-stone-500">A scalable database scenario: simulated music listeners sending real transactions to a real database.</p>
     </div>
   );
   const cap = (t: string, k: number) => <div key={k} className="reveal glass-card rounded-3xl p-6 text-left"><p className="text-xl font-semibold text-stone-900">{t}</p></div>;
-  const caps = ['Many households, many screens, all pressing Play.', 'You set the conditions. We run the crowd and watch what breaks.'];
+  const caps = ['Many listener accounts, many devices, all sharing one data model.', 'You set the conditions. DataSim runs the crowd and shows how the database responds.'];
   return (
     <StickyStage heightSvh={130} cuts={[0.12, 0.55]}
       caption={(step) => step < 0 ? <div key="h">{hero}<p className="mt-6 text-sm text-stone-400">↓ Scroll to set the scene</p></div> : cap(caps[Math.min(step, 1)]!, step)}

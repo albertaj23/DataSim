@@ -7,7 +7,7 @@ services:
       - --max-connections=300
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: playsync
+      MYSQL_DATABASE: datasim
     # Host port comes from DB_PORT in .env (compose reads it automatically).
     # Defaults to 3307 so it doesn't collide with a locally installed MySQL on 3306.
     ports: ["${DB_PORT:-3307}:3306"]

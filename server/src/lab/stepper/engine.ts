@@ -17,7 +17,7 @@ import type {
   ScenarioContext, ScenarioStep, StepResultView, StepperStateView, StepperUpdate, TxnLabel, TxnView,
 } from './types.js';
 
-const LOCK_NAME = 'playsync.stepper';
+const LOCK_NAME = 'datasim.stepper';
 const STEP_TIMEOUT_MS = 300;
 
 class TxnRuntime {

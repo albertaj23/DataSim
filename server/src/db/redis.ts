@@ -18,7 +18,7 @@ export async function closeRedis(): Promise<void> {
   if (client) { await client.quit().catch(() => undefined); client = null; }
 }
 
-export const slotKey = (accountId: number, n: number) => `playsync:slot:${accountId}:${n}`;
+export const slotKey = (accountId: number, n: number) => `datasim:slot:${accountId}:${n}`;
 const MAX_SLOTS = 10;
 
 /**
@@ -85,6 +85,6 @@ export async function extendSlot(accountId: number, deviceId: number, leaseMs: n
 /** Lab reset: remove every slot key. */
 export async function flushSlots(): Promise<void> {
   const r = getRedis();
-  const keys = await r.keys('playsync:slot:*');
+  const keys = await r.keys('datasim:slot:*');
   if (keys.length) await r.del(...keys);
 }

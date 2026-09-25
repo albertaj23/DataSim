@@ -9,15 +9,15 @@ import { Story, type ChapterDef } from '../components/story/Story';
 import { enterUp } from '../lib/motion';
 
 const DESTINATIONS = [
-  { to: '/devices', label: 'My devices', sub: 'Play music on one screen and watch the others react.', icon: Headphones, tint: 'bg-emerald-500/15 text-emerald-400' },
-  { to: '/stress', label: 'Stress test', sub: 'Make lots of screens press Play at once. Does the limit hold?', icon: Zap, tint: 'bg-amber-500/15 text-amber-400' },
-  { to: '/nerds', label: 'Stats for nerds', sub: 'Every action, checked against the database, with all the numbers.', icon: Microscope, tint: 'bg-sky-500/15 text-sky-400' },
+  { to: '/devices', label: 'Music scenario', sub: 'Use shared listener accounts to see transactions coordinate real devices.', icon: Headphones, tint: 'bg-emerald-500/15 text-emerald-400' },
+  { to: '/stress', label: 'Concurrency lab', sub: 'Race requests, test lost updates, and measure whether an invariant holds.', icon: Zap, tint: 'bg-amber-500/15 text-amber-400' },
+  { to: '/nerds', label: 'Nerd tools', sub: 'Inspect isolation, locks, constraints, transactions, checks, and experiment runs.', icon: Microscope, tint: 'bg-sky-500/15 text-sky-400' },
 ];
 
 export default function HomePage() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
   const chapters = useMemo<ChapterDef[]>(() => [
-    { id: 'story', title: 'Meet Melo', kind: 'scene', glyph: 'slice' },
+    { id: 'story', title: 'Meet the lab', kind: 'scene', glyph: 'slice' },
     { id: 'next', title: 'Where to next?', kind: 'work', glyph: 'spark' },
   ], []);
 
@@ -41,8 +41,8 @@ export default function HomePage() {
           ))}
         </div>
         <p className="mt-8 text-center text-sm text-stone-500">
-          Curious what a database race actually looks like?{' '}
-          <Link to="/nerds?tab=stepper" className="font-semibold text-violet-400 transition-colors hover:text-violet-500">Watch two transactions collide, step by step →</Link>
+          Curious what the database is doing underneath?{' '}
+          <Link to="/nerds?tab=stepper" className="font-semibold text-violet-400 transition-colors hover:text-violet-500">Watch transactions, locks, and isolation step by step →</Link>
         </p>
         {cfg && <p className="mt-2 text-center text-sm text-stone-400">A screen that goes quiet for {cfg.leaseMs / 1000}s loses its turn.</p>}
       </Chapter>

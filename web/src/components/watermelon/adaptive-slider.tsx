@@ -1,4 +1,4 @@
-// Vendored from https://registry.watermelon.sh/r/adaptive-slider.json (2026-09-24), then restyled for PlaySync:
+// Vendored from https://registry.watermelon.sh/r/adaptive-slider.json (2026-09-24), then restyled for DataSim:
 // no card/calories chrome, controlled label + unit row, neon gradient that shifts cyan -> violet -> coral with
 // the value, glowing orb thumb, tick marks, theme tokens (light + dark). Native <input type="range"> kept on
 // top (invisible) so keyboard, touch and screen readers work.

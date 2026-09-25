@@ -1,6 +1,6 @@
-# PlaySync — Multi-Device Playback Coordination as a Concurrency-Control Lab
+# DataSim — Multi-Device Playback Coordination as a Concurrency-Control Lab
 
-Implementation plan for PlaySync. Read this whole file before writing any code. Build phase by phase and **stop after each phase** with a short summary, the commands to verify it, and anything that deviated from this plan.
+Implementation plan for DataSim. Read this whole file before writing any code. Build phase by phase and **stop after each phase** with a short summary, the commands to verify it, and anything that deviated from this plan.
 
 Everything here is free and local: MySQL Community (Docker), Node.js, React, open-source npm packages. **No paid APIs, no cloud services, no API keys.**
 
@@ -64,7 +64,7 @@ Optional stretch only: Redis (Docker, free) for a NoSQL key-value lease comparis
 ## 4. Repository layout
 
 ```
-playsync/
+datasim/
   docker-compose.yml
   .env.example
   package.json                 # npm workspaces: server, web
@@ -131,7 +131,7 @@ services:
       - --max-connections=300
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: playsync
+      MYSQL_DATABASE: datasim
     ports: ["3306:3306"]
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -259,7 +259,7 @@ Use `WITH RECURSIVE` to generate rows.
 ### 6.1 Config (.env)
 
 ```
-DB_HOST=127.0.0.1  DB_PORT=3306  DB_USER=root  DB_PASSWORD=root  DB_NAME=playsync
+DB_HOST=127.0.0.1  DB_PORT=3306  DB_USER=root  DB_PASSWORD=root  DB_NAME=datasim
 PORT=4000
 LEASE_MS=15000
 HEARTBEAT_MS=5000
@@ -446,7 +446,7 @@ SELECT t.PROCESSLIST_ID AS conn_id, l.OBJECT_NAME, l.INDEX_NAME,
        l.LOCK_TYPE, l.LOCK_MODE, l.LOCK_STATUS, l.LOCK_DATA
 FROM performance_schema.data_locks l
 JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID
-WHERE l.OBJECT_SCHEMA = 'playsync';
+WHERE l.OBJECT_SCHEMA = 'datasim';
 
 SELECT rt.PROCESSLIST_ID AS waiting_conn, bt.PROCESSLIST_ID AS blocking_conn
 FROM performance_schema.data_lock_waits w
