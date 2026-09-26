@@ -58,21 +58,21 @@
 
 \section{Project Title}
 
-\textbf{DataSim: A General-Purpose Simulation Lab for Relational Database Systems.}
+\textbf{DataSim: A General-Purpose Simulation Lab for High-Impact Database Scenarios.}
 
-\textbf{Current example scenario:} Coordinating shared listener accounts and concurrent playback across multiple devices.
+\textbf{Demonstration domain:} A music workflow is included as one concrete scenario, alongside reusable patterns for inventory, reservations, payments, banking, collaboration, and job processing.
 
 \section{Introduction and Background}
 
 Database systems support applications where many users and devices read and modify shared data at the same time. A database may appear correct during a single-user demonstration but behave incorrectly when concurrent requests arrive together. Examples include lost updates, inconsistent reads, race conditions, lock waits, deadlocks, and constraint violations.
 
-\datasim{} is a general-purpose interactive database simulation lab that makes these behaviors visible. Like a focused learning simulator such as Cisco Packet Tracer, it provides approachable interfaces for constructing and observing scenarios without requiring users to manage every low-level detail manually. DataSim supports repeatable scenarios and technical views for examining transactions, locks, constraints, isolation levels, and results. The current example uses music playback: one listener account may be active on several devices, but a stream limit must remain correct even when many devices press Play simultaneously.
+\datasim{} is a general-purpose interactive database simulation lab that makes these behaviors visible. Like a focused learning simulator such as Cisco Packet Tracer, it provides approachable interfaces for constructing and observing scenarios without requiring users to manage every low-level detail manually. DataSim supports repeatable scenarios and technical views for examining transactions, locks, constraints, isolation levels, and results across domains that depend on shared state.
 
-Music is an example scenario rather than the identity or limit of the project. The same simulation approach can be applied to reservations, inventory, ticketing, banking, collaborative editing, or any system with shared state and concurrent users. Future scenarios can reuse the platform's controls, database instrumentation, experiment runner, and result visualizations.
+The project targets high-impact database situations: preventing inventory overselling, allocating the last seats or rooms fairly, making payment and order requests idempotent, maintaining consistency during bank transfers, merging collaborative edits, assigning jobs without duplication, and enforcing quotas or rate limits. Music playback is one approachable scenario for the same shared-state patterns, not the identity or limit of the project. Future scenarios can reuse the platform's controls, database instrumentation, experiment runner, and result visualizations.
 
 \section{Problem Statement}
 
-The initial demonstration scenario is a multi-device music service, where several devices belonging to one listener account may attempt to start playback at nearly the same time. Each request can read the same database state before writing a new playback session. If the operations are not coordinated correctly, more sessions may become active than the account's permitted limit. This scenario is selected because it gives concurrency concepts an intuitive setting; the underlying database techniques are intended for broader scenarios.
+The initial implementation demonstrates a shared-resource race through a multi-device music service, where several devices belonging to one listener account may attempt to start playback at nearly the same time. The same pattern appears when customers buy the last product, travelers reserve the last seat, workers claim the same job, or two services update one account simultaneously. Each request can read the same database state before writing. If the operations are not coordinated correctly, the system may oversell inventory, double-allocate a resource, lose an update, charge twice, or violate a quota. DataSim uses the music workflow as an accessible starting point while keeping the database techniques domain-independent.
 
 The project addresses the following problem:
 
@@ -80,17 +80,17 @@ The project addresses the following problem:
 How can a relational DBMS maintain a correct, real-time shared state under concurrent operations, and what correctness and performance trade-offs are introduced by different transaction, isolation, locking, and constraint strategies?
 \end{quote}
 
-\datasim{} also demonstrates the lost-update problem. When many listeners finish the same song concurrently, independent read-modify-write operations may overwrite one another and produce an incorrect play count.
+\datasim{} also demonstrates the lost-update problem. The same anomaly can affect stock counts, account balances, document versions, counters, and job status when concurrent read-modify-write operations overwrite one another.
 
 \section{Objectives}
 
 \begin{enumerate}
-\item Model users, devices, songs, playback sessions, events, and experiment results in a normalized relational database.
+\item Model shared users, resources, operations, events, and experiment results in a normalized relational database.
 \item Demonstrate concurrency anomalies using reproducible scenarios rather than only theoretical examples.
 \item Compare naive operations, transactions, serializable isolation, pessimistic locking, optimistic version checks, unique constraints, triggers, and a Redis lease strategy.
 \item Show how isolation levels affect visibility, blocking, deadlocks, and correctness.
 \item Visualize transaction schedules, lock information, wait-for relationships, rollbacks, and invariant checks.
-\item Simulate scalable groups of virtual users using real database transactions, initially represented as music listeners.
+\item Simulate scalable groups of virtual users using real database transactions across reusable scenario patterns.
 \item Provide a friendly interface for learners and a technical interface for detailed inspection.
 \item Persist experiment configurations and results so that runs can be compared and analyzed.
 \item Keep the platform extensible so future scenarios can reuse the same simulation and measurement patterns.
@@ -101,25 +101,25 @@ How can a relational DBMS maintain a correct, real-time shared state under concu
 \subsection{Included}
 \begin{itemize}
 \item MySQL 8.4 relational database using the InnoDB storage engine.
-\item Schema for accounts, devices, songs, playback sessions, playback events, and experiment runs.
-\item Account-level playback limits and lease-based session expiry.
+\item A relational schema for users, resources, operations, events, and experiment runs, with the current music scenario as its concrete implementation.
+\item Shared-resource limits, leases, and expiry rules that can represent quotas, reservations, inventory, or concurrent playback.
 \item Multiple concurrency-control strategies for the same business operation.
-\item Lost-update experiments using a shared song play counter.
+\item Lost-update experiments using a shared counter and other read-modify-write patterns.
 \item Transaction Stepper for statement-by-statement execution of two transactions.
 \item Concurrency Lab for repeated race experiments and measurement.
-\item Simulation Control Room for virtual listeners and real database traffic.
+\item Simulation Control Room for virtual users and real database traffic.
 \item InnoDB lock and wait-for information where available.
-\item Invariant checks for stream limits, leases, duplicate sessions, and audit consistency.
+\item Invariant checks for quotas, leases, duplicate allocations, and audit consistency.
 \item React web interface, Node.js/TypeScript API, Docker setup, and automated tests.
 \end{itemize}
 
 \subsection{Excluded}
 \begin{itemize}
-\item Real domain services such as audio streaming, media storage, or content licensing; the music workflow is only a database simulation.
+\item Real domain services such as audio streaming, inventory fulfillment, payment processing, banking, or content storage; DataSim models database behavior rather than operating these services.
 \item Production authentication, authorization, subscriptions, or payment processing.
 \item Production-scale cloud deployment or guaranteed multi-region availability.
 \item Personalization, recommendations, advertising, and social networking.
-\item Any claim that the implementation represents the internal design of a commercial streaming service.
+\item Any claim that the implementation represents the internal design of a commercial streaming, banking, retail, or reservation service.
 \item Unlimited arbitrary workloads; the simulator uses bounded, controlled scenarios for repeatability.
 \end{itemize}
 
@@ -139,10 +139,10 @@ Developer & Add new database strategies or scenarios without replacing the platf
 
 \subsection{Data to be stored}
 \begin{itemize}
-\item \textbf{Account:} username, stream limit, conflict policy, state version, and laboratory flag.
-\item \textbf{Device:} account ownership, device name/type, and last-seen time.
-\item \textbf{Song:} title, artist, and play counter used by the lost-update experiment.
-\item \textbf{Playback session:} device, account, song, status, position, timestamps, lease, and strategy.
+\item \textbf{User/account:} identity, quota or limit, conflict policy, state version, and laboratory flag.
+\item \textbf{Resource/client:} ownership, name/type, and last-seen time; represented by devices in the current scenario.
+\item \textbf{Item/resource:} descriptive attributes and a shared counter used by lost-update experiments; represented by songs initially.
+\item \textbf{Operation/session:} user, resource, status, position or quantity, timestamps, lease, and strategy; represented by playback sessions initially.
 \item \textbf{Playback event:} state transition, references, timestamp, version, request id, and details.
 \item \textbf{Experiment run:} type, strategy, configuration, outcomes, latency, throughput, violations, and batch id.
 \end{itemize}
@@ -150,12 +150,12 @@ Developer & Add new database strategies or scenarios without replacing the platf
 \subsection{Required operations}
 \begin{enumerate}
 \item Look up an account and its devices.
-\item Start, pause, resume, release, or stop playback.
-\item Renew a playback lease through a heartbeat.
-\item Take over playback according to a conflict policy.
+\item Create, update, reserve, release, or cancel a shared resource operation.
+\item Renew a lease or heartbeat for an in-progress operation.
+\item Resolve conflicts according to a selected policy.
 \item Reject expired, preempted, or stale device requests.
 \item Switch the active concurrency strategy.
-\item Run stream-limit and lost-update experiments.
+\item Run quota, allocation, and lost-update experiments.
 \item Step through two transactions one statement at a time.
 \item Start, pause, resume, repair, and stop a crowd simulation.
 \item Inspect live state, audit events, locks, and experiment history.
@@ -168,12 +168,12 @@ The system retrieves active sessions per account, invariant status, lost updates
 \subsection{Functional requirements}
 \begin{enumerate}
 \item The system shall store account, device, song, session, event, and experiment data.
-\item The system shall support concurrent playback claims from multiple devices.
+\item The system shall support concurrent claims, updates, allocations, or reservations from multiple users or clients.
 \item The system shall implement and compare multiple protection strategies.
 \item The system shall record experiment configurations and results.
 \item The system shall expose invariant and consistency checks.
 \item The system shall provide friendly scenario controls and technical inspection views.
-\item The system shall reject expired, preempted, or stale device operations.
+\item The system shall reject expired, preempted, duplicate, or stale operations.
 \end{enumerate}
 
 \subsection{Non-functional requirements}
@@ -265,7 +265,7 @@ EXPERIMENT_RUN(run_id PK, experiment, strategy, config, outcomes,
 \item The main stream-limit rule is a predicate over multiple rows, so it requires concurrency control rather than only a primary key.
 \end{itemize}
 
-\textbf{Core invariant:} For every account, the number of \texttt{PLAYING} sessions with an unexpired lease must be less than or equal to \texttt{max\_streams}.
+\textbf{Core invariant pattern:} For every shared owner or resource, active allocations must remain within the configured quota. In the current music scenario, the number of \texttt{PLAYING} sessions with an unexpired lease must be less than or equal to \texttt{max\_streams}.
 
 \subsection{Normalization}
 
@@ -296,7 +296,7 @@ The core schema follows third normal form. Each table represents one main entity
 
 \begin{enumerate}
 \item A user selects a scenario and concurrency strategy in the React interface.
-\item The interface sends a playback, experiment, or simulation request to the Node.js API.
+\item The interface sends an operation, experiment, or simulation request to the Node.js API.
 \item The service begins a MySQL transaction and reads the relevant shared state.
 \item The selected strategy applies locking, isolation, optimistic checks, constraints, or an external lease.
 \item MySQL returns a grant, rejection, wait, deadlock, rollback, or conflict result.
@@ -310,6 +310,6 @@ The system produces friendly playback and simulation views, live listener/device
 
 \section*{Conclusion}
 
-\datasim{} is designed as a general-purpose simulation lab for studying database behavior under concurrency. The current music playback example makes shared state easy to understand, while the platform is intended to support many domain scenarios in the future. By connecting friendly interfaces to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability across different systems.
+\datasim{} is designed as a general-purpose simulation lab for studying database behavior under concurrency. It addresses high-impact patterns such as overselling, double allocation, duplicate payment requests, inconsistent transfers, lost edits, duplicate job claims, and quota violations. The current music workflow is only one accessible demonstration of these patterns. By connecting friendly interfaces to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability across different systems.
 
 \end{document}
