@@ -60,19 +60,19 @@
 
 \textbf{DataSim: A General-Purpose Simulation Lab for High-Impact Database Scenarios.}
 
-\textbf{Demonstration domain:} A music workflow is included as one concrete scenario, alongside reusable patterns for inventory, reservations, payments, banking, collaboration, and job processing.
+\textbf{Scenario family:} Shared-resource workflows covering inventory, reservations, payments, banking, collaboration, job processing, and quota management.
 
 \section{Introduction and Background}
 
-Database systems support applications where many users and devices read and modify shared data at the same time. A database may appear correct during a single-user demonstration but behave incorrectly when concurrent requests arrive together. Examples include lost updates, inconsistent reads, race conditions, lock waits, deadlocks, and constraint violations.
+Database systems support applications where many users and clients read and modify shared data at the same time. A database may appear correct during a single-user demonstration but behave incorrectly when concurrent requests arrive together. Examples include lost updates, inconsistent reads, race conditions, lock waits, deadlocks, and constraint violations.
 
 \datasim{} is a general-purpose interactive database simulation lab that makes these behaviors visible. Like a focused learning simulator such as Cisco Packet Tracer, it provides approachable interfaces for constructing and observing scenarios without requiring users to manage every low-level detail manually. DataSim supports repeatable scenarios and technical views for examining transactions, locks, constraints, isolation levels, and results across domains that depend on shared state.
 
-The project targets high-impact database situations: preventing inventory overselling, allocating the last seats or rooms fairly, making payment and order requests idempotent, maintaining consistency during bank transfers, merging collaborative edits, assigning jobs without duplication, and enforcing quotas or rate limits. Music playback is one approachable scenario for the same shared-state patterns, not the identity or limit of the project. Future scenarios can reuse the platform's controls, database instrumentation, experiment runner, and result visualizations.
+The project targets high-impact database situations: preventing inventory overselling, allocating the last seats or rooms fairly, making payment and order requests idempotent, maintaining consistency during bank transfers, merging collaborative edits, assigning jobs without duplication, and enforcing quotas or rate limits. These scenarios share the same underlying problems of concurrent reads, writes, ownership, allocation, and recovery. Future scenarios can reuse the platform's controls, database instrumentation, experiment runner, and result visualizations.
 
 \section{Problem Statement}
 
-The initial implementation demonstrates a shared-resource race through a multi-device music service, where several devices belonging to one listener account may attempt to start playback at nearly the same time. The same pattern appears when customers buy the last product, travelers reserve the last seat, workers claim the same job, or two services update one account simultaneously. Each request can read the same database state before writing. If the operations are not coordinated correctly, the system may oversell inventory, double-allocate a resource, lose an update, charge twice, or violate a quota. DataSim uses the music workflow as an accessible starting point while keeping the database techniques domain-independent.
+The initial implementation demonstrates a shared-resource race in which several clients belonging to one owner may attempt to claim a limited resource at nearly the same time. The same pattern appears when customers buy the last product, travelers reserve the last seat, workers claim the same job, or two services update one account simultaneously. Each request can read the same database state before writing. If the operations are not coordinated correctly, the system may oversell inventory, double-allocate a resource, lose an update, charge twice, or violate a quota. DataSim keeps the database techniques domain-independent so the same controls can represent any of these situations.
 
 The project addresses the following problem:
 
@@ -101,8 +101,8 @@ How can a relational DBMS maintain a correct, real-time shared state under concu
 \subsection{Included}
 \begin{itemize}
 \item MySQL 8.4 relational database using the InnoDB storage engine.
-\item A relational schema for users, resources, operations, events, and experiment runs, with the current music scenario as its concrete implementation.
-\item Shared-resource limits, leases, and expiry rules that can represent quotas, reservations, inventory, or concurrent playback.
+\item A relational schema for users, resources, allocations, operations, events, and experiment runs.
+\item Shared-resource limits, leases, and expiry rules that can represent quotas, reservations, inventory, or work allocation.
 \item Multiple concurrency-control strategies for the same business operation.
 \item Lost-update experiments using a shared counter and other read-modify-write patterns.
 \item Transaction Stepper for statement-by-statement execution of two transactions.
@@ -115,11 +115,11 @@ How can a relational DBMS maintain a correct, real-time shared state under concu
 
 \subsection{Excluded}
 \begin{itemize}
-\item Real domain services such as audio streaming, inventory fulfillment, payment processing, banking, or content storage; DataSim models database behavior rather than operating these services.
+\item Real domain services such as inventory fulfillment, payment processing, banking, reservations, collaboration, or content storage; DataSim models database behavior rather than operating these services.
 \item Production authentication, authorization, subscriptions, or payment processing.
 \item Production-scale cloud deployment or guaranteed multi-region availability.
 \item Personalization, recommendations, advertising, and social networking.
-\item Any claim that the implementation represents the internal design of a commercial streaming, banking, retail, or reservation service.
+\item Any claim that the implementation represents the internal design of a commercial banking, retail, reservation, collaboration, or payment service.
 \item Unlimited arbitrary workloads; the simulator uses bounded, controlled scenarios for repeatability.
 \end{itemize}
 
@@ -140,20 +140,20 @@ Developer & Add new database strategies or scenarios without replacing the platf
 \subsection{Data to be stored}
 \begin{itemize}
 \item \textbf{User/account:} identity, quota or limit, conflict policy, state version, and laboratory flag.
-\item \textbf{Resource/client:} ownership, name/type, and last-seen time; represented by devices in the current scenario.
-\item \textbf{Item/resource:} descriptive attributes and a shared counter used by lost-update experiments; represented by songs initially.
-\item \textbf{Operation/session:} user, resource, status, position or quantity, timestamps, lease, and strategy; represented by playback sessions initially.
-\item \textbf{Playback event:} state transition, references, timestamp, version, request id, and details.
+\item \textbf{Client:} owner, name/type, and last-seen time.
+\item \textbf{Resource:} descriptive attributes, availability, capacity, and shared counters.
+\item \textbf{Allocation/operation:} user, resource, status, quantity, timestamps, lease, and strategy.
+\item \textbf{Operation event:} state transition, references, timestamp, version, request id, and details.
 \item \textbf{Experiment run:} type, strategy, configuration, outcomes, latency, throughput, violations, and batch id.
 \end{itemize}
 
 \subsection{Required operations}
 \begin{enumerate}
-\item Look up an account and its devices.
+\item Look up a user/account and its clients or owned resources.
 \item Create, update, reserve, release, or cancel a shared resource operation.
 \item Renew a lease or heartbeat for an in-progress operation.
 \item Resolve conflicts according to a selected policy.
-\item Reject expired, preempted, or stale device requests.
+\item Reject expired, preempted, duplicate, or stale client requests.
 \item Switch the active concurrency strategy.
 \item Run quota, allocation, and lost-update experiments.
 \item Step through two transactions one statement at a time.
@@ -167,7 +167,7 @@ The system retrieves active sessions per account, invariant status, lost updates
 
 \subsection{Functional requirements}
 \begin{enumerate}
-\item The system shall store account, device, song, session, event, and experiment data.
+\item The system shall store user, client, resource, allocation, event, and experiment data.
 \item The system shall support concurrent claims, updates, allocations, or reservations from multiple users or clients.
 \item The system shall implement and compare multiple protection strategies.
 \item The system shall record experiment configurations and results.
@@ -202,11 +202,11 @@ MySQL was selected because InnoDB supports ACID transactions and multiple isolat
 \toprule
 \textbf{Entity} & \textbf{Important attributes} & \textbf{Keys/constraints}\\
 \midrule
-\texttt{account} & id, username, max streams, conflict policy, state version, lab flag & PK, unique username, checks\\
-\texttt{device} & id, account, name, type, last seen & PK, FK, unique account/name\\
-\texttt{song} & id, title, artist, play count & PK, non-negative count\\
-\texttt{playback\_session} & device, account, song, status, position, lease, strategy & PK, composite FK, song FK, indexes\\
-\texttt{playback\_event} & state transition, references, version, request id, details & PK, unique request id\\
+\texttt{user\_account} & id, username, quota, conflict policy, state version, lab flag & PK, unique username, checks\\
+\texttt{client} & id, account, name, type, last seen & PK, FK, unique account/name\\
+\texttt{resource} & id, name, type, capacity, shared counter & PK, non-negative values\\
+\texttt{allocation} & client, account, resource, status, quantity, lease, strategy & PK, composite FK, resource FK, indexes\\
+\texttt{operation\_event} & state transition, references, version, request id, details & PK, unique request id\\
 \texttt{experiment\_run} & type, strategy, config, outcomes, latency, throughput & PK, batch indexes\\
 \bottomrule
 \end{longtable}
@@ -215,39 +215,40 @@ MySQL was selected because InnoDB supports ACID transactions and multiple isolat
 
 \begin{center}
 \begin{tikzpicture}[node distance=1.5cm and 1.8cm, entity/.style={draw,rounded corners,fill=blue!8,minimum width=2.8cm,minimum height=0.8cm,align=center}, rel/.style={-{Latex},thick}]
-\node[entity] (account) {ACCOUNT};
-\node[entity,below left=of account] (device) {DEVICE};
-\node[entity,below right=of account] (event) {PLAYBACK\_EVENT};
-\node[entity,below=of device] (session) {PLAYBACK\_SESSION};
-\node[entity,below=of event] (song) {SONG};
-\node[entity,right=of song] (run) {EXPERIMENT\_RUN};
-\draw[rel] (account) -- node[left]{owns} (device);
+\node[entity] (account) {USER\_ACCOUNT};
+\node[entity,below left=of account] (client) {CLIENT};
+\node[entity,below right=of account] (event) {OPERATION\_EVENT};
+\node[entity,below=of client] (allocation) {ALLOCATION};
+\node[entity,below=of event] (resource) {RESOURCE};
+\node[entity,right=of resource] (run) {EXPERIMENT\_RUN};
+\draw[rel] (account) -- node[left]{owns} (client);
 \draw[rel] (account) -- node[right]{produces} (event);
-\draw[rel] (device) -- node[left]{runs} (session);
-\draw[rel] (account) -- (session);
-\draw[rel] (song) -- node[below]{played in} (session);
+\draw[rel] (client) -- node[left]{creates} (allocation);
+\draw[rel] (account) -- (allocation);
+\draw[rel] (resource) -- node[below]{allocated in} (allocation);
 \end{tikzpicture}
 \end{center}
 
 \subsection{Relational schema}
 
 \begin{lstlisting}
-ACCOUNT(account_id PK, username UNIQUE, max_streams, conflict_policy,
+USER_ACCOUNT(account_id PK, username UNIQUE, quota, conflict_policy,
         state_version, is_lab)
 
-DEVICE(device_id PK, account_id FK -> ACCOUNT, device_name,
-       device_type, last_seen_at, UNIQUE(account_id, device_name))
+CLIENT(client_id PK, account_id FK -> USER_ACCOUNT, client_name,
+        client_type, last_seen_at, UNIQUE(account_id, client_name))
 
-SONG(song_id PK, title, artist, play_count)
+RESOURCE(resource_id PK, resource_name, resource_type, capacity,
+          shared_counter)
 
-PLAYBACK_SESSION(session_id PK, device_id, account_id, song_id FK -> SONG,
-                 status, position_ms, started_at, lease_expires_at,
-                 ended_at, strategy,
-                 FK(device_id, account_id) -> DEVICE(device_id, account_id))
+ALLOCATION(allocation_id PK, client_id, account_id, resource_id FK -> RESOURCE,
+            status, quantity, started_at, lease_expires_at,
+            ended_at, strategy,
+            FK(client_id, account_id) -> CLIENT(client_id, account_id))
 
-PLAYBACK_EVENT(event_id PK, account_id, device_id, session_id, event_type,
-               state_version, client_request_id, created_at, detail,
-               UNIQUE(device_id, client_request_id))
+OPERATION_EVENT(event_id PK, account_id, client_id, allocation_id, event_type,
+                  state_version, client_request_id, created_at, detail,
+                  UNIQUE(client_id, client_request_id))
 
 EXPERIMENT_RUN(run_id PK, experiment, strategy, config, outcomes,
                violations, p50_ms, p95_ms, throughput, batch_id, created_at)
@@ -255,21 +256,21 @@ EXPERIMENT_RUN(run_id PK, experiment, strategy, config, outcomes,
 
 \subsection{Keys and constraints}
 \begin{itemize}
-\item Primary keys identify every account, device, song, session, event, and run.
+\item Primary keys identify every user, client, resource, allocation, event, and run.
 \item Foreign keys preserve ownership and reference integrity.
-\item A composite foreign key ensures that a session's device belongs to its recorded account.
-\item Unique username and account/device-name constraints prevent duplicate identities.
-\item A unique device/request-id constraint makes state-changing requests idempotent.
-\item Status, policy, stream-limit, position, and counter checks reject invalid values.
-\item An optional generated-column unique index demonstrates declarative protection for one active session per account.
-\item The main stream-limit rule is a predicate over multiple rows, so it requires concurrency control rather than only a primary key.
+\item A composite foreign key ensures that an allocation's client belongs to its recorded account.
+\item Unique username and account/client-name constraints prevent duplicate identities.
+\item A unique client/request-id constraint makes state-changing requests idempotent.
+\item Status, policy, quota, quantity, capacity, and counter checks reject invalid values.
+\item An optional generated-column unique index demonstrates declarative protection for one active allocation per account.
+\item Allocation limits are predicates over multiple rows, so they require concurrency control rather than only a primary key.
 \end{itemize}
 
-\textbf{Core invariant pattern:} For every shared owner or resource, active allocations must remain within the configured quota. In the current music scenario, the number of \texttt{PLAYING} sessions with an unexpired lease must be less than or equal to \texttt{max\_streams}.
+\textbf{Core invariant pattern:} For every shared owner or resource, active allocations and consumed quantity must remain within the configured quota or capacity.
 
 \subsection{Normalization}
 
-The core schema follows third normal form. Each table represents one main entity or event type; attributes are atomic; non-key attributes depend on the whole key; and device, song, event, and experiment details are not unnecessarily duplicated. The session table intentionally stores both \texttt{device\_id} and \texttt{account\_id} because account-level queries and locking are central to the workload. The composite foreign key keeps this controlled denormalization consistent.
+The core schema follows third normal form. Each table represents one main entity or event type; attributes are atomic; non-key attributes depend on the whole key; and client, resource, event, and experiment details are not unnecessarily duplicated. The allocation table intentionally stores both \texttt{client\_id} and \texttt{account\_id} because owner-level queries and locking are central to the workload. The composite foreign key keeps this controlled denormalization consistent.
 
 \section{System Architecture / Workflow Diagram}
 
@@ -306,10 +307,10 @@ The core schema follows third normal form. Each table represents one main entity
 
 \subsection{System output}
 
-The system produces friendly playback and simulation views, live listener/device state, strategy verdicts, transaction schedules, lock and wait information, experiment history, latency and throughput measurements, violation counts, and CSV/Markdown results for analysis.
+The system produces friendly scenario and simulation views, live user/client/resource state, strategy verdicts, transaction schedules, lock and wait information, experiment history, latency and throughput measurements, violation counts, and CSV/Markdown results for analysis.
 
 \section*{Conclusion}
 
-\datasim{} is designed as a general-purpose simulation lab for studying database behavior under concurrency. It addresses high-impact patterns such as overselling, double allocation, duplicate payment requests, inconsistent transfers, lost edits, duplicate job claims, and quota violations. The current music workflow is only one accessible demonstration of these patterns. By connecting friendly interfaces to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability across different systems.
+\datasim{} is designed as a general-purpose simulation lab for studying database behavior under concurrency. It addresses high-impact patterns such as overselling, double allocation, duplicate payment requests, inconsistent transfers, lost edits, duplicate job claims, and quota violations. Its domain-neutral entities and diagrams make the project applicable to many systems without exposing one particular business domain at the high level. By connecting friendly interfaces to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability across different systems.
 
 \end{document}
