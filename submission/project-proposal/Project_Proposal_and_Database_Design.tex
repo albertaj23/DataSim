@@ -58,21 +58,21 @@
 
 \section{Project Title}
 
-\textbf{DataSim: A Friendly Simulation Lab for Relational Database Systems.}
+\textbf{DataSim: A General-Purpose Simulation Lab for Relational Database Systems.}
 
-\textbf{Music scenario:} Coordinating shared listener accounts and concurrent playback across multiple devices.
+\textbf{Current example scenario:} Coordinating shared listener accounts and concurrent playback across multiple devices.
 
 \section{Introduction and Background}
 
 Database systems support applications where many users and devices read and modify shared data at the same time. A database may appear correct during a single-user demonstration but behave incorrectly when concurrent requests arrive together. Examples include lost updates, inconsistent reads, race conditions, lock waits, deadlocks, and constraint violations.
 
-\datasim{} is an interactive database simulation lab that makes these behaviors visible. It provides friendly user interfaces for running repeatable scenarios and technical views for examining transactions, locks, constraints, isolation levels, and results. Music playback is used as an understandable example: one listener account may be active on several devices, but a stream limit must remain correct even when many devices press Play simultaneously.
+\datasim{} is a general-purpose interactive database simulation lab that makes these behaviors visible. Like a focused learning simulator such as Cisco Packet Tracer, it provides approachable interfaces for constructing and observing scenarios without requiring users to manage every low-level detail manually. DataSim supports repeatable scenarios and technical views for examining transactions, locks, constraints, isolation levels, and results. The current example uses music playback: one listener account may be active on several devices, but a stream limit must remain correct even when many devices press Play simultaneously.
 
-The music domain is an example rather than a limitation. The same simulation approach can be extended to reservations, inventory, ticketing, banking, collaborative editing, or any system with shared state and concurrent users.
+Music is an example scenario rather than the identity or limit of the project. The same simulation approach can be applied to reservations, inventory, ticketing, banking, collaborative editing, or any system with shared state and concurrent users. Future scenarios can reuse the platform's controls, database instrumentation, experiment runner, and result visualizations.
 
 \section{Problem Statement}
 
-In a multi-device music service, several devices belonging to one listener account may attempt to start playback at nearly the same time. Each request can read the same database state before writing a new playback session. If the operations are not coordinated correctly, more sessions may become active than the account's permitted limit.
+The initial demonstration scenario is a multi-device music service, where several devices belonging to one listener account may attempt to start playback at nearly the same time. Each request can read the same database state before writing a new playback session. If the operations are not coordinated correctly, more sessions may become active than the account's permitted limit. This scenario is selected because it gives concurrency concepts an intuitive setting; the underlying database techniques are intended for broader scenarios.
 
 The project addresses the following problem:
 
@@ -90,7 +90,7 @@ How can a relational DBMS maintain a correct, real-time shared state under concu
 \item Compare naive operations, transactions, serializable isolation, pessimistic locking, optimistic version checks, unique constraints, triggers, and a Redis lease strategy.
 \item Show how isolation levels affect visibility, blocking, deadlocks, and correctness.
 \item Visualize transaction schedules, lock information, wait-for relationships, rollbacks, and invariant checks.
-\item Simulate a scalable crowd of virtual music listeners using real database transactions.
+\item Simulate scalable groups of virtual users using real database transactions, initially represented as music listeners.
 \item Provide a friendly interface for learners and a technical interface for detailed inspection.
 \item Persist experiment configurations and results so that runs can be compared and analyzed.
 \item Keep the platform extensible so future scenarios can reuse the same simulation and measurement patterns.
@@ -115,7 +115,7 @@ How can a relational DBMS maintain a correct, real-time shared state under concu
 
 \subsection{Excluded}
 \begin{itemize}
-\item Real audio streaming, media storage, or content licensing.
+\item Real domain services such as audio streaming, media storage, or content licensing; the music workflow is only a database simulation.
 \item Production authentication, authorization, subscriptions, or payment processing.
 \item Production-scale cloud deployment or guaranteed multi-region availability.
 \item Personalization, recommendations, advertising, and social networking.
@@ -310,6 +310,6 @@ The system produces friendly playback and simulation views, live listener/device
 
 \section*{Conclusion}
 
-\datasim{} combines a practical relational schema with an interactive laboratory for studying database behavior under concurrency. The music playback example makes shared state easy to understand, while the underlying design focuses on general DBMS concepts applicable to many domains. By connecting a friendly interface to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability.
+\datasim{} is designed as a general-purpose simulation lab for studying database behavior under concurrency. The current music playback example makes shared state easy to understand, while the platform is intended to support many domain scenarios in the future. By connecting friendly interfaces to real MySQL transactions and measurable outcomes, the project shows how database design choices affect correctness, performance, and scalability across different systems.
 
 \end{document}
