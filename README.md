@@ -10,6 +10,15 @@
 
 ![DataSim simulation](docs/simulation.gif)
 
+### Current interface
+
+- **Workspace-first navigation:** Workspaces, templates, and saved evidence are the primary product surface. Desktop uses a route-aware glass navigation rail; tablet and phone retain compact navigation.
+- **Editable scenario catalog:** Workspace and template collections use expandable bento cards. Select a card to expand it while adjacent cards remain available for comparison and navigation.
+- **Observable workbench:** Cards combine a pointer-reactive dotted field, liquid-glass depth, and accessible focus states without hiding model, actor, invariant, or evidence controls.
+- **Reload transition:** Reloading a workspace route displays a full-screen 2.5-second Anime.js DataSim mark transition. The logo draws its transaction lanes and database rings, passes crossing signals through the model, then yields to the workspace. Reduced-motion preferences bypass the transition.
+
+The application runs at `http://localhost:5173/DataSim/` in this repository's default Vite configuration.
+
 ### Historical headline results (legacy stream-limit lab)
 
 Harshest stream-limit cell: 64 concurrent claims, 1 account, 20 ms race delay, 10 trials.
