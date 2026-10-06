@@ -1,16 +1,16 @@
 # DataSim
 
-**DataSim is a friendly simulation lab for relational database behavior.**
+**DataSim is a visual workbench for exploring concurrency in database systems.**
 
-> **Five-line summary:** DataSim turns DBMS concepts into scenarios you can run through a clear UI.
-> Explore concurrency, lost updates, isolation levels, locking, transactions, constraints, and scale.
-> Music is the first scenario: shared listener accounts, many devices, and one stream-limit invariant.
-> Compare protection strategies, inspect locks and deadlocks, and watch simulated users in real time.
-> Run it locally with Docker, Node 20+, and `npm run dev`.
+> Create a workspace, model database objects, configure concurrent actors, and define invariants.
+> Save immutable revisions and run bounded, typed scenarios against MySQL/InnoDB.
+> Inspect transaction traces, invariant outcomes, final state, run history, and comparable metrics.
+> Runs distinguish observed database events from DataSim-derived evidence; arbitrary SQL is not accepted.
+> See [the product plan](docs/PRODUCT_PLAN.md) and [the workbench implementation status](docs/implementation/scenario-workbench-overhaul.md).
 
 ![DataSim simulation](docs/simulation.gif)
 
-### Headline results
+### Historical headline results (legacy stream-limit lab)
 
 Harshest stream-limit cell: 64 concurrent claims, 1 account, 20 ms race delay, 10 trials.
 
@@ -24,11 +24,11 @@ Harshest stream-limit cell: 64 concurrent claims, 1 account, 20 ms race delay, 1
 | OPTIMISTIC | 0 | **52.29 ms** | **1188.8 rps** |
 | CONSTRAINT | 0 | 55.44 ms | 943.91 rps |
 
-DataSim starts with a concrete music scenario: one listener account, several devices (MacBook, iPhone, iPad, Browser), and a per-account limit on simultaneous playback. Underneath the friendly UI is a reusable database laboratory. It measures how concurrency-control strategies protect an invariant, exposes isolation and locking behavior, demonstrates lost updates and constraints, and scales the same scenario to a live crowd of simulated users.
+The current product starts with a general workbench: users can create and edit versioned scenario workspaces, instantiate inventory-reservation and shared-counter templates, validate typed operations and invariants, and run them against isolated MySQL fixture state. Single runs select an explicit actor count; persisted experiment batches sweep actor concurrency and InnoDB isolation against the same pinned revision, with per-cell child runs, trial summaries, bounded work, cancellation, and an evidence table. The original playback, device, simulation, stress, and technical lab screens remain legacy routes; they are not the primary catalog or navigation identity. See the workbench plan for delivered functionality and remaining limitations.
 
 Everything runs locally and for free: MySQL 8.4 in Docker, Node 20+, React. There is **no authentication** (you pick an account by username; login is out of scope) and no paid service, API key or telemetry.
 
-> This README is the overview and carries the report material (sections 5, 8 and 13). The detailed documents live in `docs/`: [PLAN.md](docs/PLAN.md) (original spec), [er.md](docs/er.md), [normalization.md](docs/normalization.md), [concurrency.md](docs/concurrency.md), [experiments.md](docs/experiments.md), [syllabus-map.md](docs/syllabus-map.md), [simulation.md](docs/simulation.md), [ui-voice.md](docs/ui-voice.md), and the phase plans in [docs/implementation/](docs/implementation/).
+> This README is the overview and carries the report material (sections 5, 8 and 13). The detailed documents live in `docs/`: [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md) (general product direction), [scenario workbench overhaul plan](docs/implementation/scenario-workbench-overhaul.md) (latest implementation plan for editable workspaces, UI, and chart/component libraries), [Bklit and Kokonut adoption plan](docs/implementation/visual-component-adoption-plan.md) (current frontend audit and phased chart/component integration plan), [PLAN.md](docs/PLAN.md) (original playback MVP spec), [er.md](docs/er.md), [normalization.md](docs/normalization.md), [concurrency.md](docs/concurrency.md), [experiments.md](docs/experiments.md), [syllabus-map.md](docs/syllabus-map.md), [simulation.md](docs/simulation.md), [ui-voice.md](docs/ui-voice.md), and the phase plans in [docs/implementation/](docs/implementation/).
 
 ---
 
@@ -55,6 +55,8 @@ Everything runs locally and for free: MySQL 8.4 in Docker, Node 20+, React. Ther
 ---
 
 ## 1. The idea and the research question
+
+> **Legacy background:** the following playback/stream-limit case documents an existing example domain and its original experiments. The current product starts in the general workspace workbench described above.
 
 A streaming app notices when the same account starts playback on a second device. This project never claims "this is how Apple does it" (the mechanism is not public). It asks the underlying database question directly:
 
@@ -88,7 +90,8 @@ A primary key gives each row an identity; it does not protect this invariant, be
 
 | Area | What you get |
 |---|---|
-| **Playback app** | Four `brij` devices that are each an independent live client (own socket): play, pause/resume, stop, "Play here instead?" takeover, **Go offline** (zombie device), lease expiry, real-time handoff between tabs and a real phone over the LAN. |
+| **Scenario workbench** | Searchable workspace library and editable templates; model entities, typed fields, constraints, relationships and fixtures; transaction actors and ordered typed operations; invariant validation; immutable revisions; bounded MySQL/InnoDB runs, cancellation, event provenance, saved evidence, history and same-revision comparison. |
+| **Legacy playback app** | Four `brij` devices that are each an independent live client (own socket): play, pause/resume, stop, "Play here instead?" takeover, **Go offline** (zombie device), lease expiry, real-time handoff between tabs and a real phone over the LAN. Retained outside primary workbench navigation. |
 | **Eight claim strategies** | Six core (NAIVE, TXN_RR, SERIALIZABLE, PESSIMISTIC, OPTIMISTIC, CONSTRAINT) plus two Phase 7 stretch strategies (**TRIGGER**: a database trigger; **REDIS_LEASE**: a Redis key-value gatekeeper), live-switchable, each commented with the anomaly it prevents or allows. |
 | **Concurrency Lab** | N simultaneous claims behind a barrier, invariant check from SQL, retries/deadlocks/timeouts/latency/throughput, every trial persisted to `experiment_run`; plus a lost-update experiment (4 variants); a CLI bench that writes CSVs and result tables. |
 | **Transaction Stepper** | Two real MySQL transactions run one statement at a time; live InnoDB lock table (`data_locks`), wait-for graph, deadlock reports, KILL + undo-log recovery; 8 scenarios. |
@@ -97,7 +100,9 @@ A primary key gives each row an identity; it does not protect this invariant, be
 | **Stats for nerds** | Ten technical tabs (Checks, Lab, Stepper, **Index**, **Theory**, Action trace, Live state, Audit log, Experiment runs, Database) that *verify* what the friendly pages do. |
 | **Docs** | ER/EER, functional dependencies and normalization, concurrency analysis, experiment method + measured results, syllabus map (all in `docs/`, summarised here). |
 
-**State of the project (see section 14):** all seven original phases, the Simulation Control Room, the navigation/story UI, the Phase 6 index experiment, the Phase 7 stretch strategies, and this README are published on `main`.
+**Workbench status:** the editable workbench is an in-progress vertical slice. Its current capabilities and gaps are tracked in [the implementation plan](docs/implementation/scenario-workbench-overhaul.md). The older phase history below describes the legacy product and remains useful for understanding its existing concurrency engines.
+
+**Legacy systems:** the original playback service, simulation control room, concurrency lab, transaction stepper, and technical evidence tabs remain in the repository. They are not yet all adapted to the common workspace/run/evidence contract.
 
 ---
 
@@ -112,7 +117,7 @@ npm run db:up            # MySQL 8.4 (host port 3307; applies db/schema.sql + db
 npm run dev              # API on :4000, web UI on :5173 (both bound to the LAN)
 ```
 
-Open **http://localhost:5173**.
+Open **http://localhost:5173**. Start in **Workspaces**, choose an empty workspace or a distinct template, edit the model/transactions/invariant, save a revision, validate, then run and inspect evidence. Additive scenario migrations are applied by the server at startup; they do not require `npm run db:reset`.
 
 MySQL is published on host port **3307** (`DB_PORT` in `.env`) so it doesn't collide with a local MySQL on 3306; the same variable drives `docker-compose.yml` and the server.
 
@@ -122,13 +127,13 @@ MySQL is published on host port **3307** (`DB_PORT` in `.env`) so it doesn't col
 |---|---|
 | `npm run db:up` | Start the MySQL and Redis containers and wait until healthy (schema + seed loaded) |
 | `npm run db:down` | Stop the container (data kept) |
-| `npm run db:reset` | Drop the volume and recreate the DB from `schema.sql` + `seed.sql` (needed after **any** schema change) |
+| `npm run db:reset` | Destructively drop the local Docker volume and recreate the legacy DB from `schema.sql` + `seed.sql`; avoid when retaining local data |
 | `npm run db:shell` | `mysql` client inside the container |
 | `npm run dev` | Server (tsx watch) + web (Vite) together |
 | `npm test` | Server suite (real MySQL, files run sequentially) then web unit tests |
 | `npm -w server run test:fast` | Server tests without the slow lab and simulation tests (~6 s vs ~40–90 s) |
 | `npm run typecheck` | `tsc` on both workspaces |
-| `npm -w web run build` | Production bundle (a recharts chunk-size warning is expected) |
+| `npm -w web run build` | Type-check and build the production web bundle |
 | `npm run bench` | Full experiment matrix (~1,200 trials, several minutes): writes CSVs to `docs/results/` and refreshes the tables in `docs/experiments.md` (and, by hand, section 8.3 below) |
 | `npm run bench -- --quick` | Fast smoke test of the same pipeline (~1 minute) |
 | `npm run bench -- --trials N` / `--only stream\|lost` / `--no-md` / `--stretch` | Override trial count / run one experiment / skip updating `docs/experiments.md` / also run TRIGGER and REDIS_LEASE |
@@ -613,25 +618,18 @@ The floating action bar shows Start / Run again, or during a run the live protec
 
 | Route | What it is |
 |---|---|
-| `/` **Home** | A scroll story: Melo assembles from geometric shapes on load, then scroll drives them (devices leave the body, orbit, take turns, lock onto a protective ring) while captions explain the three ideas. Then "Where to next?". |
-| `/devices` **My devices** | Five chapters: *Meet your screens* (scene), *Your screens* (four live device cards; compact by default with a single Play/Pause button and a "More" toggle; only one expanded at a time; phones get a snap carousel with dots; a sticky status strip; the "Play here instead?" sheet), *Little missions* (one at a time, auto-detected where possible), *House rules* (gate picker for 1–4 screens, three policy cards), *Curious?* (link to Stats for nerds, phone link with copy button, tour). **All four DeviceCards stay mounted at all times** because each owns heartbeats and a socket; compact/expanded is only a prop. |
-| `/device?account=&device=` | One device on its own for a real phone; **focus mode** (no sidebar or tab bar, back arrow). |
-| `/stress` **Stress test** | Two stories (`?exp=count` for "Counting plays", default "Pressing Play together"): chooser → scene → *How big is the stampede?* → *Who guards the door?* (method cards) → *Let them in* (dots rush, then the **same dots settle into a grid coloured by the real result**, e.g. 30 screens with "No protection" on a 1-screen account → 29 red + 1 green) → *What happened?* (gated until a result exists) → *Race them all* (race track) → *Go deeper*. Auto-advances to the verdict/compare after a run. |
-| `/sim` **Simulation** | See section 10. |
-| `/nerds` **Stats for nerds** | Ten tabs: **Checks** (six SQL assertions re-run after every change, with history), **Lab** (full-control Concurrency Lab with all strategies/variants, parameters and trial counts, saved to the DB), **Stepper**, **Index** (the index experiment, section 8.4), **Theory** (precedence-graph checker and timestamp-ordering simulator, section 8.6), **Action trace** (every request/response from any tab, with an idempotency probe), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Experiment runs** (every saved trial, filterable, with charts built from the database), **Database** (schema, indexes, foreign keys). Legacy `?tab=stress` maps to Runs. Only shell integration, a sticky tab strip and a breadcrumb changed here; it stays dense, monospace and unplayful. |
+| `/` and `/workspaces` **Workspaces** | Searchable library with recent activity, create/rename/duplicate/archive/restore, and editable template instances. |
+| `/templates` **Templates** | Blank, inventory-reservation, and shared-counter starting definitions. Each creates a distinct editable workspace. |
+| `/workspaces/:id` **Workbench** | Model editor (tables, fields, keys, relationships, fixtures), transaction actor/operation editor, invariant editor, saved revision history, validation, explicit actor concurrency, MySQL runs, batch sweeps, cancellation, event trace, and result snapshot. |
+| `/runs` **Runs & evidence** | Generic run and batch history with source revisions, event-source labels, traces, final state, and qualified comparisons. Batch cells link to their persisted source runs. Legacy technical tabs remain reachable through a compatibility action/query. |
+| `/devices`, `/device`, `/stress`, `/sim` | Legacy playback/concurrency experiences retained for compatibility; they are not primary workbench navigation. |
+| `/nerds` | Compatibility redirect to `/runs`, preserving its query string for old deep links. |
 
-Old addresses redirect: `/wall`, `/playground` → `/devices`; `/race` → `/stress`.
+The primary shell is organized around **Workspaces**, **Templates**, and **Runs**. The full-screen brand intro replays on a full browser reload, holds for about 10 seconds, then fades into the current page; **Skip intro** dismisses it sooner. Internal route navigation does not replay it. The intro is omitted when reduced motion is requested. Workspace and run screens use a dark control-room palette, responsive editor panels, keyboard-accessible operation ordering, and reduced-motion-aware transitions. Older playback/story pages retain their own legacy presentation while migration continues.
 
-**The shell.**
-- **Sidebar** (≥ 1280 px expanded 248 px or collapsed to a 72 px icon rail; 768–1279 px a rail with an overlay that doesn't shift content; hidden on phones). Toggle with the panel-left button or Cmd/Ctrl+B; the choice persists (and survives disabled storage). Groups: *Listen* (Home, My devices), *Experiment* (Stress test, Simulation), *Under the hood* (Stats for nerds). Footer: "Use your phone" (URL + copy button) and a live database status dot. Rail items show portal tooltips.
-- **Top bar:** toggle, title with breadcrumb (`Page › Chapter`, updating as you scroll), a scroll-progress line, search, theme toggle. Cmd/Ctrl+K opens the command palette at every width (page commands, nerd tools, "Switch light / dark").
-- **Phones:** a labelled bottom tab bar (Home, Devices, Stress, Simulation, More) with a More sheet (Stats for nerds, Search, Use your phone, theme); the bar slides away on scroll-down and returns on scroll-up (scroll-aware chrome), with the action bar dropping into the freed space.
-- Skip link, focus moves to the page heading on route change, `document.title` per route, `aria-current`/`aria-expanded`, scroll position memory on Back.
-- Optional effects (all switchable in `web/src/lib/chrome.ts`): scroll-aware chrome, header title morph (the top-bar title pops in when the page heading scrolls away), a faint ambient shapes layer that leans with scroll velocity. Soft scroll-snap was evaluated and ruled out. The View-Transitions morph (Home → My devices) and a sidebar-rail focus mode during live runs (on) are flagged in the same file.
+### 11.2 Legacy story framework
 
-### 11.2 The story framework
-
-Friendly pages are **stories** built from chapters:
+The retained playback-oriented pages are **stories** built from chapters:
 
 - `Story` tracks the active chapter (the last whose top crossed 40% of the visible area), syncs the URL hash (`replaceState` while scrolling so Back leaves the page; `pushState` on deliberate jumps), supports Alt+↑/↓, follows Back/Forward between hash entries, and feeds the breadcrumb and progress line.
 - `Chapter` is either a **scene** (a tall sticky stage whose progress 0..1 scrubs a geometric animation; decoration and captions only, never controls) or a **work** chapter (normal flow; forms and results). Work chapters can be **gated** with a friendly placeholder ("Run the stampede to see what happens ↑").
@@ -645,7 +643,7 @@ Friendly pages are **stories** built from chapters:
 - **Typography:** Fredoka (rounded display, friendly pages), Inter (UI), JetBrains Mono (Stats for nerds).
 - **Mascot:** **Melo** the watermelon slice (moods: happy, cheering, worried, sleepy, surprised) appears in the header/sidebar, on Home, in loading states and in verdicts. Each device is an **avatar** whose face reflects its state (playing, paused, waiting, moved, napping/offline, stopped). Confetti bursts the first time playback starts.
 - **The geometric vocabulary** (`components/geo/pieces.tsx`): Slice (the account/Melo), DeviceShape (laptop, phone, tablet, browser circle), Ring (protection held), Crack (broken), Gate (the limit, N openings), Crowd, Counter, Bits, plus 16 px rail glyphs.
-- **Motion rule:** anime.js v4 (`animate(targets, params)`, `createTimeline`, `stagger`, `splitText`, `utils`) for **everything we author**; the `motion` package **only inside vendored Watermelon components**; never both on one element. Presets in `lib/motion.ts` (`enterUp`, `pop`, `shake`, `countUp`, `celebrate`, `heroText`, `unfold`, `morphDots`, `breathe`) are no-ops under `prefers-reduced-motion`. Content is visible by default (animations only add motion; never inline `opacity: 0`); intros run from-values with a 2.5 s watchdog. The route wrapper uses a CSS keyframe with fill `backwards` (a forwards-filling `transform` animation would keep a containing block alive for `position: fixed` descendants and misplace fixed elements). Overlays use portals.
+- **Motion rule:** anime.js v4 (`animate(targets, params)`, `createTimeline`, `stagger`, `splitText`, `utils`) for **everything we author**; the `motion` package **only inside vendored Watermelon components**; never both on one element. Presets in `lib/motion.ts` (`enterUp`, `pop`, `shake`, `countUp`, `celebrate`, `heroText`, `unfold`, `morphDots`, `breathe`) are no-ops under `prefers-reduced-motion`. Content is visible by default (animations only add motion; never inline `opacity: 0`); the workspace intro holds for about 10 s, then fades out over 420 ms, with an 11 s failsafe and a skip button. The route wrapper uses a CSS keyframe with fill `backwards` (a forwards-filling `transform` animation would keep a containing block alive for `position: fixed` descendants and misplace fixed elements). Overlays use portals.
 - **Sliders:** every range control in the app uses the Watermelon **Adaptive Slider**, vendored and restyled: a glassy pill track with tick marks, a fill gradient that shifts **cyan → violet → coral** with the value, a glowing orb thumb, animated digits, and the native input kept on top (invisible) for keyboard/touch/screen readers.
 - **Friendly voice:** second person, short sentences, verbs first, no jargon on friendly pages (no lease, session, 409/410, HTTP, strategy identifiers); celebrate small wins; be kind in failures; at most one emoji per message. Examples: "Your music hopped over to iPhone 🎧"; "We lost touch, so we let this spot go"; "Nice! Only 1 screen got in, exactly as allowed 🎉"; "Another experiment is running. Try again in a moment ⏳". Chapter titles are questions or invitations (≤ 5 words); captions ≤ 2 sentences. A guard test fails if jargon appears in string literals of friendly pages.
 - **Vendored Watermelon UI components** (open-source React catalog, https://ui.watermelon.sh; licence reviewed before publication): `command-search` (made controlled, Cmd/Ctrl+K, free-form sections), `feature-tour` (first-visit tour), `copy-confirm`, `adaptive-slider`. Each file's first line records its source and edits. Earlier copies of `fluid-tabs`, `dock`, `dialog-stack` and `feedback` were removed when unused.
@@ -775,6 +773,10 @@ Deliberate departures from the original plan (kept; treat as decisions):
 
 ## 16. Known limits, gotchas and what is not built
 
+- **Workbench is a vertical slice, not the full roadmap.** Its generic operation runner supports typed read/update/insert/delete, barriers, bounded waits, commit and rollback; read-field updates support a validated numeric offset; structured invariant predicates cover nonnegative numeric fields, numeric equality to a value, and field ≤ field. Single runs select an actor prefix. Batch sweeps cover only actor concurrency × InnoDB isolation, are pinned to immutable revision/configuration snapshots, and cap cells and aggregate actor-trials. Inventory and shared-counter runs use the common MySQL runner, but relationships and field-level unique constraints still need consistent execution semantics.
+- **Reproducibility and evidence limits:** the seed is recorded but does not randomize the initial runner's actor schedules; guided mode synchronizes explicit barriers rather than replaying a seeded schedule. Concept-model execution, generic lock/wait inspection, SQL capture, pause/step/replay, export/import, and legacy-run migration remain unbuilt. Generic run events distinguish MySQL observations from DataSim-derived checks.
+- **Charts/components are pending migration:** run comparison uses local accessible bars; batches currently expose persisted per-cell metrics and source-run IDs in an accessible table, not a trend chart. The official Bklit package is private, its current time-series chart uses a date/time x-axis and internal `@/lib/utils` alias, and its package metadata combines a React 18 peer range with a React 19 dependency and alpha Visx packages. The Kokonut Smooth Tab source lacks arrow-key tab navigation and reduced-motion handling and includes a perpetual SVG animation. Both pilots are deferred pending a safe adaptation; the older Recharts technical view remains legacy.
+- **Database migrations:** scenario-workspace migrations run additively at server startup. Do not use `npm run db:reset` to apply them; that command destroys the local Docker volume.
 - Tests share lab accounts with the running dev server. Running `npm test` or `npm run bench` while clicking around the Stress test can make both misbehave; the lab lock returns 409 rather than corrupting results.
 - `labPool` is 120 connections and MySQL `max_connections` is 300. Lab concurrency must be ≤ `LAB_POOL_SIZE` and ≤ 64 × accounts.
 - SERIALIZABLE and OPTIMISTIC at high contention in TAKEOVER mode **legitimately** exhaust the 5 retries for some requests (reported as `errors`): a finding, not a bug.
@@ -793,7 +795,7 @@ Deliberate departures from the original plan (kept; treat as decisions):
 
 - **One phase at a time.** Create the phase branch from the current one; follow a plan; finish with tests green, typecheck clean, build OK and browser verification; then stop and report. Commit only when asked; never commit scratch files.
 - **Dev servers:** the user often runs `npm run dev` themselves. Check `lsof -iTCP:4000 -iTCP:5173 -sTCP:LISTEN` first, use the running one (tsx watch reloads the server, Vite hot-reloads the web), and never kill processes you didn't start.
-- **After a schema change:** update `db/schema.sql`, run `npm run db:reset`, update this README's section 5 if keys or FDs changed, and restart the dev server.
+- **After a schema change:** use an additive migration for scenario-workbench tables and preserve the existing Docker volume. Do not run `npm run db:reset` to apply workbench migrations; that command destroys local data. Update this README's section 5 if keys or FDs changed.
 - **Verify in the browser**, not just with tests: desktop and 375 px, both themes, reduced motion, no console errors (the browser logs expected 409/410 responses as "Failed to load resource").
 - Keep strategies small and commented with the anomaly they allow or prevent (they are shown in a viva). Keep React components under ~200 lines, split into files.
 - All HTTP goes through `api` from `lib/api.ts` (it traces automatically; add a `summarize()` case in `lib/trace.ts` for any new state-changing endpoint). Any change to `lib/api.ts` types must keep `noUncheckedIndexedAccess` happy.

@@ -8,8 +8,10 @@ import { closeRedis } from './db/redis.js';
 import { simEngine } from './lab/sim/engine.js';
 import { startReaper } from './services/leaseReaper.js';
 import { setLiveStrategy } from './services/playback.js';
+import { runScenarioMigrations } from './db/migrations.js';
 
 // Make the schema match the configured strategy (adds/drops the CONSTRAINT unique index).
+await runScenarioMigrations();
 await setLiveStrategy(config.DEFAULT_STRATEGY);
 
 const server = http.createServer(createApp());

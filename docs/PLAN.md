@@ -1,5 +1,7 @@
 # DataSim — Multi-Device Playback Coordination as a Concurrency-Control Lab
 
+> **Status: COMPLETED (all Phases 0–7 built, September 2026).** This document is the original implementation spec for the playback MVP. It was followed during Phases 0–7 and is now **historical**. The current implementation authority is [scenario-workbench-overhaul.md](implementation/scenario-workbench-overhaul.md). The schema, route structure, strategy count, and page layout have evolved beyond what this file describes — see the [README](../README.md) for the current state.
+
 Implementation plan for DataSim. Read this whole file before writing any code. Build phase by phase and **stop after each phase** with a short summary, the commands to verify it, and anything that deviated from this plan.
 
 Everything here is free and local: MySQL Community (Docker), Node.js, React, open-source npm packages. **No paid APIs, no cloud services, no API keys.**
@@ -259,7 +261,7 @@ Use `WITH RECURSIVE` to generate rows.
 ### 6.1 Config (.env)
 
 ```
-DB_HOST=127.0.0.1  DB_PORT=3306  DB_USER=root  DB_PASSWORD=root  DB_NAME=datasim
+DB_HOST=127.0.0.1  DB_PORT=3307  DB_USER=root  DB_PASSWORD=root  DB_NAME=datasim
 PORT=4000
 LEASE_MS=15000
 HEARTBEAT_MS=5000
@@ -313,7 +315,9 @@ Shared helpers:
 - `writeEvent(conn, …)`.
 - Takeover: mark the oldest `(active − max_streams + 1)` active sessions `PREEMPTED` with `ended_at = NOW(3)`, ordered by `started_at`.
 
-### 6.4 The six strategies
+### 6.4 The eight strategies
+
+> *Originally six; the TRIGGER and REDIS_LEASE strategies were added in Phase 7 (stretch).*
 
 | Strategy | Isolation | Mechanism | Expected lab result |
 |---|---|---|---|
@@ -323,6 +327,8 @@ Shared helpers:
 | `PESSIMISTIC` | READ COMMITTED | `SELECT … FROM account WHERE account_id=? FOR UPDATE` first, then count, insert, bump | 0 violations, waits, higher p95 under contention |
 | `OPTIMISTIC` | READ COMMITTED | read `state_version` + count without locks → sleep → `UPDATE account SET state_version=v+1 WHERE account_id=? AND state_version=v`; `affectedRows=0` means conflict → rollback and retry | 0 violations, **abort/retry rate rises with contention** |
 | `CONSTRAINT` | READ COMMITTED | expire stale rows for account → (TAKEOVER: preempt) → `INSERT`; `ER_DUP_ENTRY` (1062) on `uq_one_active_per_account` means conflict | 0 violations, cheapest, **max_streams = 1 only** |
+| `TRIGGER` | READ COMMITTED | `BEFORE INSERT` trigger counts active sessions and `SIGNAL`s; the trigger's SELECT runs with the invoking INSERT's locking semantics | **Mostly safe, not guaranteed** — 10% violation at c=64/1 acct; residual window before either row exists |
+| `REDIS_LEASE` | READ COMMITTED (MySQL); atomic Lua (Redis) | `SET slot NX PX` over `max_streams` slot keys in Redis *before* the MySQL session row | 0 violations, **fastest**; two-store consistency requires reconciliation; single Redis node not partition-tolerant |
 
 Details that must be right:
 
@@ -493,25 +499,27 @@ Matrix: 6 strategies × isolation where applicable × concurrency {2, 8, 32, 64}
 
 ## 10. Build phases (stop and report after each)
 
-**Phase 0: Scaffold.** Workspaces, TS configs, docker-compose, `.env.example`, npm scripts (`db:up`, `db:reset`, `dev`, `test`, `bench`). *Done when* `npm run db:up` works and `GET /api/health` returns the DB version.
+> *All phases are complete as of September 2026. See [phases-5-7.md](implementation/phases-5-7.md) for the Phase 5–7 status update.*
 
-**Phase 1: Schema and seed.** `schema.sql`, `seed.sql`, plus `docs/er.md` (Mermaid ER diagram) and `docs/normalization.md` covering: FDs for every table; candidate keys (`username`; `(account_id, device_name)`); the 3NF analysis including the deliberate `playback_session.account_id` denormalization and its composite-FK remedy; the BCNF check for the other tables; the EER specialization of DEVICE (disjoint, total, attribute-defined on `device_type`, mapped as a single relation with a type attribute) and the alternative mappings. *Done when* seed counts are correct and inserting a session with a device from the wrong account fails with an FK error.
+**Phase 0: Scaffold.** ✅ COMPLETED. Workspaces, TS configs, docker-compose, `.env.example`, npm scripts (`db:up`, `db:reset`, `dev`, `test`, `bench`). *Done when* `npm run db:up` works and `GET /api/health` returns the DB version.
 
-**Phase 2: Strategies and playback service.** `tx.ts`, all six strategies, claim/heartbeat/pause/release routes, idempotency, fault injection, and tests from §9 except the lab ones. *Done when* the tests pass.
+**Phase 1: Schema and seed.** ✅ COMPLETED. `schema.sql`, `seed.sql`, plus `docs/er.md` (Mermaid ER diagram) and `docs/normalization.md` covering: FDs for every table; candidate keys (`username`; `(account_id, device_name)`); the 3NF analysis including the deliberate `playback_session.account_id` denormalization and its composite-FK remedy; the BCNF check for the other tables; the EER specialization of DEVICE (disjoint, total, attribute-defined on `device_type`, mapped as a single relation with a type attribute) and the alternative mappings. *Done when* seed counts are correct and inserting a session with a device from the wrong account fails with an FK error.
 
-**Phase 3: Real-time, reaper, and UI.** socket.io rooms, publish-after-commit, versioned client store, the lease reaper, `/device` and `/wall` including freeze/zombie. *Done when* two browser tabs plus a real phone show the handoff live, ASK/TAKEOVER/REJECT all behave, closing a tab expires its session after the lease, and freeze → takeover → unfreeze yields a 410.
+**Phase 2: Strategies and playback service.** ✅ COMPLETED. `tx.ts`, all six strategies, claim/heartbeat/pause/release routes, idempotency, fault injection, and tests from §9 except the lab ones. *Done when* the tests pass.
 
-**Phase 4: Concurrency Lab.** Race runner, lost-update runner, `experiment_run` persistence, `/lab` page with charts, CLI bench. *Done when* the lab tests pass and "Run all strategies" reproduces the expected pattern from §6.4.
+**Phase 3: Real-time, reaper, and UI.** ✅ COMPLETED. socket.io rooms, publish-after-commit, versioned client store, the lease reaper, `/device` and `/wall` including freeze/zombie. *Done when* two browser tabs plus a real phone show the handoff live, ASK/TAKEOVER/REJECT all behave, closing a tab expires its session after the lease, and freeze → takeover → unfreeze yields a 410.
 
-**Phase 5: Transaction Stepper.** Engine, lock inspector, all seven scenarios, `/stepper` page. *Done when* every scenario produces its expected outcome and the lock table matches the explanation.
+**Phase 4: Concurrency Lab.** ✅ COMPLETED. Race runner, lost-update runner, `experiment_run` persistence, `/lab` page with charts, CLI bench. *Done when* the lab tests pass and "Run all strategies" reproduces the expected pattern from §6.4.
 
-**Phase 6: Index experiment and docs.** `/index-lab`; `docs/concurrency.md` (each strategy's schedule, locks taken, isolation, the OCC correctness argument, the lock-order rule, conflict-serializability of the NAIVE schedule shown with a precedence-graph cycle); `docs/experiments.md` from the bench; `docs/syllabus-map.md` (§12).
+**Phase 5: Transaction Stepper.** ✅ COMPLETED. Engine, lock inspector, all seven scenarios, `/stepper` page. *Done when* every scenario produces its expected outcome and the lock table matches the explanation.
 
-**Phase 7: Stretch (only if asked).**
+**Phase 6: Index experiment and docs.** ✅ COMPLETED. `/index-lab`; `docs/concurrency.md` (each strategy's schedule, locks taken, isolation, the OCC correctness argument, the lock-order rule, conflict-serializability of the NAIVE schedule shown with a precedence-graph cycle); `docs/experiments.md` from the bench; `docs/syllabus-map.md` (§12).
+
+**Phase 7: Stretch.** ✅ COMPLETED (all four items built).
 - `REDIS_LEASE` strategy with `SET key value NX PX` on a free local Redis container. Compare it in the lab and discuss key-value stores and CAP (a single Redis node is not partition-tolerant as a lock service).
 - Timestamp-ordering simulator: a pure TS module taking a schedule (e.g. `R1(A) W2(A) W1(A)`) and running it under basic TO and TO + Thomas write rule, showing aborts and ignored obsolete writes. Clearly labelled a simulation.
 - Precedence-graph builder: take a user-entered schedule and report whether it is conflict-serializable, drawing the graph.
-- `TRIGGER` strategy: a `BEFORE INSERT` trigger that counts and `SIGNAL`s. It still races because the trigger's SELECT is a non-locking read, which is a good "looks safe but isn't" finding.
+- `TRIGGER` strategy: a `BEFORE INSERT` trigger that counts and `SIGNAL`s. Measured: **mostly safe, not guaranteed** (the trigger's SELECT runs with the INSERT's locking semantics, which mostly closes the window, but a residual gap remains at RC). See [experiments.md](experiments.md) and [concurrency.md](concurrency.md) §2.7.
 
 ---
 

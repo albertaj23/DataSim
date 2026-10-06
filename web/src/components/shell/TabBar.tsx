@@ -1,12 +1,13 @@
 import { Ellipsis } from 'lucide-react';
+import { motion } from 'motion/react';
 import { NavLink } from 'react-router-dom';
 import { useSidebar } from '../../lib/shell';
 import { cx } from '../ui';
 import { NAV_GROUPS } from './nav';
 
-const TABS = NAV_GROUPS.flatMap((g) => g.items).filter((i) => i.to !== '/nerds');
+const TABS = NAV_GROUPS.flatMap((g) => g.items);
 
-/** Phone navigation: labelled bottom tabs; "More" opens the sheet with Nerds, phone link, theme. */
+/** Phone navigation: labelled bottom tabs; More opens workbench routes and utilities. */
 export function TabBar() {
   const { width, focus, moreOpen, setMoreOpen } = useSidebar();
   if (width >= 768 || focus) return null;
@@ -16,9 +17,8 @@ export function TabBar() {
         {TABS.map((t) => (
           <li key={t.to} className="flex-1">
             <NavLink to={t.to} end={t.to === '/'} onClick={() => setMoreOpen(false)}
-              className={({ isActive }) => cx('flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors', isActive ? 'text-violet-400' : 'text-stone-500')}>
-              <t.Icon size={21} />
-              {t.short}
+              className={({ isActive }) => cx('app-tab-link flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors', isActive ? 'text-violet-400' : 'text-stone-500')}>
+              {({ isActive }) => <>{isActive && <motion.span layoutId="mobile-tab-active" className="app-tab-active" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}<t.Icon size={21} /><span>{t.short}</span></>}
             </NavLink>
           </li>
         ))}

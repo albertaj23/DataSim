@@ -89,7 +89,7 @@ export function DatabaseOverlay({ sim, scenarioId, onClose }: { sim: SimState; s
           <div className="label-caps mb-1">Retries so far</div>
           <p className="font-mono">{k?.retries ?? 0} retries · {k?.failed ?? 0} gave up · {k?.moved ?? 0} moves</p>
         </div>
-        <Link to={`/nerds?tab=stepper&scenario=${why}`} className="inline-block rounded-xl bg-violet-500/12 px-4 py-2 font-sans text-sm font-semibold text-violet-400 hover:bg-violet-500/20">Why did this happen? →</Link>
+        <Link to={`/runs?tab=stepper&scenario=${why}`} className="inline-block rounded-xl bg-violet-500/12 px-4 py-2 font-sans text-sm font-semibold text-violet-400 hover:bg-violet-500/20">Why did this happen? →</Link>
       </aside>
     </div>,
     document.body,

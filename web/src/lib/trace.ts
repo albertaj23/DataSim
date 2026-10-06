@@ -1,8 +1,8 @@
 // A record of everything this browser did: every state-changing API call and every
-// server push that told a device to stop. The friendly pages never show it; "Stats for nerds"
-// does, next to the server-side checks that verify each action's effect.
+// server push that told a device to stop. The Runs & evidence workspace displays it next
+// to the server-side checks that verify each action's effect.
 //
-// Stored in localStorage so a nerds tab sees what a devices tab does (the `storage` event
+// Stored in localStorage so an evidence tab sees what a devices tab does (the `storage` event
 // fires in other tabs). Every access is guarded: storage can be unavailable (private mode).
 
 import { useSyncExternalStore } from 'react';

@@ -6,7 +6,7 @@ export function MoreChapter({ username, onTour }: { username: string; onTour: ()
   const url = `${window.location.origin}/device?account=${encodeURIComponent(username)}&device=iPhone`;
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Link to="/nerds?tab=trace" className="glass-card group rounded-3xl p-6 transition-all hover:-translate-y-1">
+      <Link to="/runs?tab=trace" className="glass-card group rounded-3xl p-6 transition-all hover:-translate-y-1">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-sky-500/15 text-sky-400"><FlaskConical size={24} /></span>
         <h3 className="mt-4 text-lg font-semibold text-stone-900">See what the database saw →</h3>
         <p className="mt-1 text-sm text-stone-500">Every request you made, and the checks that ran after each one.</p>

@@ -7,9 +7,9 @@ import { StickyStage } from '../story/StickyStage';
 import { GeoMascot } from './GeoMascot';
 
 const STEPS = [
-  { icon: Users, title: 'A friendly lab for real DBMS ideas', text: 'DataSim turns database concepts into visible scenarios you can run, pause, compare, and repeat.' },
-  { icon: Hand, title: 'Music makes the model tangible', text: 'Start playback across shared listener accounts and watch transactions coordinate devices in real time.' },
-  { icon: ShieldCheck, title: 'From one account to a crowd', text: 'Scale the same scenario from a few screens to thousands of virtual listeners while correctness stays measurable.' },
+  { icon: Users, title: 'A visual lab for real DBMS behavior', text: 'DataSim turns database concepts into visible scenarios you can run, pause, compare, and repeat.' },
+  { icon: Hand, title: 'Start with an invariant', text: 'Choose a shared-state question and watch concurrent transactions test the property you care about.' },
+  { icon: ShieldCheck, title: 'Follow evidence, not animation', text: 'Inspect checks, schedules, locks, and saved results from every run.' },
 ];
 export const HOME_CUTS = [0.08, 0.36, 0.68];
 
@@ -18,10 +18,10 @@ function Hero({ headline }: { headline?: React.RefObject<HTMLHeadingElement> }) 
     <div className="reveal">
       <p className="mb-3 inline-block rounded-full bg-violet-500/12 px-3 py-1 text-sm font-semibold text-violet-400">Hi, I'm Melo, your database lab guide 🍉</p>
       <h1 ref={headline} className="text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl">Make database behavior visible.</h1>
-      <p className="mt-4 text-lg leading-relaxed text-stone-500">DataSim is a simulation lab for transactions, concurrency, locks, constraints, isolation, and scale. Music is the first scenario: shared listeners, many devices, one database.</p>
+      <p className="mt-4 text-lg leading-relaxed text-stone-500">DataSim is a visual workbench for transactions, concurrency, locks, constraints, isolation, and scale. Choose a scenario, run it against MySQL, and inspect what actually happened.</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
-        <Link to="/devices" viewTransition={FEATURES.viewTransitions} className="rounded-2xl bg-violet-600 px-6 py-3 font-semibold text-[#fff] shadow-lg shadow-violet-600/30 transition-all hover:-translate-y-0.5 hover:bg-violet-500 active:scale-95">Explore a music scenario 🎧</Link>
-        <Link to="/stress" className="rounded-2xl bg-fg/6 px-6 py-3 font-semibold text-stone-700 ring-1 ring-fg/10 transition-all hover:-translate-y-0.5 hover:bg-fg/10 active:scale-95">Run a database race ⚡</Link>
+        <Link to="/scenarios" viewTransition={FEATURES.viewTransitions} className="rounded-2xl bg-violet-600 px-6 py-3 font-semibold text-[#fff] shadow-lg shadow-violet-600/30 transition-all hover:-translate-y-0.5 hover:bg-violet-500 active:scale-95">Choose a scenario</Link>
+        <Link to="/runs?tab=stepper" className="rounded-2xl bg-fg/6 px-6 py-3 font-semibold text-stone-700 ring-1 ring-fg/10 transition-all hover:-translate-y-0.5 hover:bg-fg/10 active:scale-95">Step through a schedule</Link>
       </div>
     </div>
   );

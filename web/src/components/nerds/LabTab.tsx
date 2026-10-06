@@ -30,8 +30,8 @@ function Checkboxes<T extends string>({ options, selected, onChange }: {
 
 function BatchLink({ batchId }: { batchId: string }) {
   return (
-    <Link to={`/nerds?tab=runs&batch=${batchId}`} className="text-xs font-medium text-violet-300 hover:underline">
-      Open in Experiment runs →
+    <Link to={`/runs?tab=runs&batch=${batchId}`} className="text-xs font-medium text-violet-300 hover:underline">
+      Open saved runs →
     </Link>
   );
 }

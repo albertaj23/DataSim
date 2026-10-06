@@ -133,8 +133,8 @@ function Inner({ c }: { c: SimControl }) {
 
       <Chapter id="why" kind="work" title="Why did this happen?" question="See the database's side of the story.">
         <div className="grid gap-4 md:grid-cols-2">
-          <Link to="/nerds?tab=stepper" className="glass-card rounded-3xl p-5 transition-all hover:-translate-y-1"><h3 className="font-display text-lg font-semibold text-stone-900">Watch it statement by statement →</h3><p className="mt-1 text-sm text-stone-500">Two real transactions, one step at a time{c.activePreset ? ` (try the "${c.activePreset.label}" idea)` : ''}.</p></Link>
-          <Link to="/nerds?tab=runs" className="glass-card rounded-3xl p-5 transition-all hover:-translate-y-1"><h3 className="font-display text-lg font-semibold text-stone-900">Every run, saved →</h3><p className="mt-1 text-sm text-stone-500">All your simulations, with the full numbers.</p></Link>
+          <Link to="/runs?tab=stepper" className="glass-card rounded-3xl p-5 transition-all hover:-translate-y-1"><h3 className="font-display text-lg font-semibold text-stone-900">Watch it statement by statement →</h3><p className="mt-1 text-sm text-stone-500">Two real transactions, one step at a time{c.activePreset ? ` (try the "${c.activePreset.label}" idea)` : ''}.</p></Link>
+          <Link to="/runs?tab=runs" className="glass-card rounded-3xl p-5 transition-all hover:-translate-y-1"><h3 className="font-display text-lg font-semibold text-stone-900">Every run, saved →</h3><p className="mt-1 text-sm text-stone-500">All your simulations, with the full numbers.</p></Link>
         </div>
       </Chapter>
 

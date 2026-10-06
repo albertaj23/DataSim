@@ -117,7 +117,7 @@ export function VerdictChapter({ exp }: { exp: Experiment }) {
         {r.legend.map((l) => <span key={l.kind} className="inline-flex items-center gap-1.5"><span className={cx('h-2.5 w-2.5 rounded-full', dotCls[l.kind])} /> {l.label}</span>)}
       </div>
       <p className="text-sm text-stone-500">{r.footer}</p>
-      <p className="text-xs text-stone-400">Saved to the lab history · <Link to={`/nerds?tab=runs&batch=${r.batchId}`} className="font-medium text-violet-400 hover:underline">see it in Stats for nerds →</Link></p>
+      <p className="text-xs text-stone-400">Saved to run history · <Link to={`/runs?tab=runs&batch=${r.batchId}`} className="font-medium text-violet-400 hover:underline">inspect the evidence →</Link></p>
     </div>
   );
 }
@@ -130,7 +130,7 @@ export function CompareChapter({ exp, onCompare }: { exp: Experiment; onCompare:
         <div className="mt-4">
           <RaceTrack lanes={exp.lanes} />
           <p className="mt-3 text-sm text-stone-500">{exp.kind === 'stream' ? 'The safe methods all hold the limit; they differ in cost.' : 'The safe methods all count exactly right; they differ in speed.'}</p>
-          {exp.comparisonBatch && <p className="mt-2 text-xs text-stone-400">Saved to the lab history · <Link to={`/nerds?tab=runs&batch=${exp.comparisonBatch}`} className="font-medium text-violet-400 hover:underline">see it in Stats for nerds →</Link></p>}
+          {exp.comparisonBatch && <p className="mt-2 text-xs text-stone-400">Saved to run history · <Link to={`/runs?tab=runs&batch=${exp.comparisonBatch}`} className="font-medium text-violet-400 hover:underline">inspect the evidence →</Link></p>}
         </div>
       ) : <p className="mt-4 text-sm text-stone-500">Same stampede, every guard, side by side.</p>}
     </div>
@@ -139,8 +139,8 @@ export function CompareChapter({ exp, onCompare }: { exp: Experiment; onCompare:
 
 export function DeeperChapter() {
   const items = [
-    { to: '/nerds?tab=stepper', title: 'See it in slow motion', text: 'Two real transactions, one statement at a time.' },
-    { to: '/nerds?tab=runs', title: 'Every run, saved', text: 'Compare numbers from all your experiments.' },
+    { to: '/runs?tab=stepper', title: 'See it in slow motion', text: 'Two real transactions, one statement at a time.' },
+    { to: '/runs?tab=runs', title: 'Every run, saved', text: 'Compare numbers from all your experiments.' },
     { to: '/sim', title: 'Now try a whole city', text: 'Hundreds of listeners, live, with the dials in your hands.' },
   ];
   return (

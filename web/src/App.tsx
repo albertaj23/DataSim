@@ -6,11 +6,12 @@ import { AppShell } from './components/shell/AppShell';
 import { ThemeProvider } from './lib/theme';
 import { ToastProvider } from './lib/toast';
 import { recall, remember, restoreScroll } from './lib/scrollMemory';
-import HomePage from './pages/HomePage';
 import DevicesPage from './pages/devices/DevicesPage';
 
 const DevicePage = lazy(() => import('./pages/DevicePage'));
-const NerdsPage = lazy(() => import('./pages/NerdsPage'));
+const WorkspacesPage = lazy(() => import('./pages/WorkspacesPage'));
+const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
+const RunsPage = lazy(() => import('./pages/RunsPage'));
 const StressTestPage = lazy(() => import('./pages/StressTestPage'));
 const SimPage = lazy(() => import('./components/sim/SimPage'));
 
@@ -39,6 +40,12 @@ function Page({ children }: { children: ReactNode }) {
   return <div ref={ref} key={pathname} className="page-content route-enter">{children}</div>;
 }
 
+/** Keep report links and old bookmarks working while the product moves to run-scoped evidence. */
+function LegacyEvidenceRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/runs${search}`} replace />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -47,12 +54,17 @@ export default function App() {
           <AppShell>
             <Suspense fallback={<div className="grid place-items-center py-20"><Mascot mood="sleepy" size={90} /></div>}>
               <Routes>
-                <Route path="/" element={<Page><HomePage /></Page>} />
+                <Route path="/" element={<Page><WorkspacesPage /></Page>} />
+                <Route path="/workspaces" element={<Page><WorkspacesPage /></Page>} />
+                <Route path="/workspaces/:id" element={<Page><WorkspacePage /></Page>} />
+                <Route path="/templates" element={<Page><WorkspacesPage templatesOnly /></Page>} />
+                <Route path="/scenarios" element={<Navigate to="/templates" replace />} />
+                <Route path="/runs" element={<Page><RunsPage /></Page>} />
                 <Route path="/devices" element={<Page><DevicesPage /></Page>} />
                 <Route path="/device" element={<Page><DevicePage /></Page>} />
                 <Route path="/stress" element={<Page><StressTestPage /></Page>} />
                 <Route path="/sim" element={<Page><SimPage /></Page>} />
-                <Route path="/nerds" element={<Page><NerdsPage /></Page>} />
+                <Route path="/nerds" element={<LegacyEvidenceRedirect />} />
                 <Route path="/playground" element={<Navigate to="/devices" replace />} />
                 <Route path="/wall" element={<Navigate to="/devices" replace />} />
                 <Route path="/race" element={<Navigate to="/stress" replace />} />

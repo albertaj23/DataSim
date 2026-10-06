@@ -10,7 +10,7 @@ const STEPS: TourStep[] = [
   { id: 'play', title: 'Tap Play on any screen', description: 'Each card is a pretend device on your account. Press Play on the MacBook to start some music.', icon: <Hand size={40} /> },
   { id: 'second', title: 'Now try a second one', description: 'Press Play on the iPhone. It will ask if you want the music moved over.', icon: <Repeat size={40} /> },
   { id: 'hop', title: 'Watch the hop', description: 'Say yes and the first screen stops instantly and tells you where the music went.', icon: <Sparkles size={40} /> },
-  { id: 'nerds', title: 'Curious what happened?', description: 'Stats for nerds shows every request and database check behind the scenes.', icon: <Microscope size={40} /> },
+  { id: 'evidence', title: 'Curious what happened?', description: 'Runs & evidence shows every request and database check behind the scenes.', icon: <Microscope size={40} /> },
 ];
 
 export const tourSeen = seen;

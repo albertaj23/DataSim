@@ -16,7 +16,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<Ap
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const json = (await res.json().catch(() => ({}))) as T;
-  // Every state-changing call is traced for "Stats for nerds"; reads are not.
+  // Every state-changing call is captured for the run evidence trace; reads are not.
   if (method !== 'GET') {
     const b = body as Record<string, unknown> | undefined;
     recordTrace({
@@ -34,10 +34,17 @@ export const api = {
   post: <T>(path: string, body?: unknown) => call<T>('POST', path, body ?? {}),
   put: <T>(path: string, body: unknown) => call<T>('PUT', path, body),
   patch: <T>(path: string, body: unknown) => call<T>('PATCH', path, body),
+  delete: <T>(path: string) => call<T>('DELETE', path),
 };
 
 export interface Health { ok: boolean; db?: { version: string; name: string; defaultIsolation: string; now: string }; error?: string }
 export interface AppConfig { leaseMs: number; heartbeatMs: number; strategy: StrategyName }
+export type ScenarioRunMode = 'LIVE_DBMS' | 'GUIDED_SCHEDULE' | 'CONCEPT_MODEL';
+export interface ScenarioDefinition {
+  id: string; revision: number; title: string; description: string; question: string;
+  invariant: { description: string; checkKind: 'SQL_ASSERTION' | 'FINAL_VALUE' | 'SCENARIO_PROPERTY' };
+  concepts: string[]; runModes: ScenarioRunMode[]; status: 'READY'; entryPath: string;
+}
 export interface Song { songId: number; title: string; artist: string; durationMs: number; playCount: number }
 
 export interface Snapshot {

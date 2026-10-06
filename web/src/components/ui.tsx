@@ -14,7 +14,16 @@ export const Card = React.forwardRef<HTMLElement, {
 }>(({ children, className, title, subtitle, action, padded = true }, ref) => (
   <section
     ref={ref}
-    className={cx('glass-card rounded-3xl overflow-hidden', className)}
+    className={cx('glass-card liquid-glass mouse-grid-surface rounded-3xl overflow-hidden', className)}
+    onPointerMove={(event) => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      event.currentTarget.style.setProperty('--surface-x', `${event.clientX - rect.left}px`);
+      event.currentTarget.style.setProperty('--surface-y', `${event.clientY - rect.top}px`);
+    }}
+    onPointerLeave={(event) => {
+      event.currentTarget.style.removeProperty('--surface-x');
+      event.currentTarget.style.removeProperty('--surface-y');
+    }}
   >
     {(title || action) && (
       <header className="flex items-start justify-between gap-4 border-b border-fg/6 px-5 py-4">

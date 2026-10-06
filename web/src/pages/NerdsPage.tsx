@@ -17,16 +17,16 @@ import { StepperTab } from '../components/nerds/StepperTab';
 import { TraceTab } from '../components/nerds/TraceTab';
 
 const TABS = [
-  { id: 'checks', label: 'Checks' },
-  { id: 'lab', label: 'Lab' },
-  { id: 'stepper', label: 'Stepper' },
-  { id: 'index', label: 'Index' },
-  { id: 'theory', label: 'Theory' },
+  { id: 'runs', label: 'Run history' },
+  { id: 'lab', label: 'Run setup' },
+  { id: 'stepper', label: 'Guided schedule' },
+  { id: 'checks', label: 'Invariant checks' },
   { id: 'trace', label: 'Action trace' },
   { id: 'live', label: 'Live state' },
-  { id: 'audit', label: 'Audit log' },
-  { id: 'runs', label: 'Experiment runs' },
-  { id: 'database', label: 'Database' },
+  { id: 'audit', label: 'Event log' },
+  { id: 'index', label: 'Index evidence' },
+  { id: 'theory', label: 'Concept model' },
+  { id: 'database', label: 'Environment' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -34,8 +34,8 @@ export default function NerdsPage() {
   const [params, setParams] = useSearchParams();
   const rawTab = params.get('tab');
   // 'stress' was this tab's id before it was renamed to 'runs' and started reading experiment_run.
-  const tab = (TABS.find((t) => t.id === rawTab)?.id ?? (rawTab === 'stress' ? 'runs' : 'checks')) as TabId;
-  usePageMeta({ title: 'Stats for nerds', chapter: TABS.find((t) => t.id === tab)?.label });
+  const tab = (TABS.find((t) => t.id === rawTab)?.id ?? (rawTab === 'stress' ? 'runs' : 'runs')) as TabId;
+  usePageMeta({ title: 'Runs & evidence', chapter: TABS.find((t) => t.id === tab)?.label });
   const username = params.get('account') ?? 'brij';
 
   const [accountId, setAccountId] = useState<number | null>(null);
@@ -89,11 +89,10 @@ export default function NerdsPage() {
     <div className="nerdy space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link to="/devices" className="mb-2 inline-block font-sans text-sm font-medium text-violet-400 hover:underline">← Back to the friendly version</Link>
-          <h1 className="font-mono text-2xl font-semibold tracking-tight text-stone-900">stats for nerds</h1>
+          <Link to="/scenarios" className="mb-2 inline-block font-sans text-sm font-medium text-violet-400 hover:underline">← Back to scenarios</Link>
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Runs &amp; evidence</h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-600">
-            The technical side of the simulation lab: concurrency, lost updates, isolation levels, locks, transactions,
-            constraints, and scalability, verified against MySQL after every scenario.
+            Review a run’s invariant checks, saved results, transaction schedule, and database evidence. Live observations come from MySQL; concept models are labelled separately.
           </p>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs text-stone-500">

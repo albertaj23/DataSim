@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FlaskConical, Moon, Search, Sun } from 'lucide-react';
+import { Boxes, ChartNoAxesCombined, FilePlus2, Moon, Search, Sun } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSidebar } from '../../lib/shell';
 import { useTheme } from '../../lib/theme';
-import { PhoneButton } from './PhonePopover';
 
 /** Phone "More" sheet (portal). Closes on Esc, scrim tap or navigation. */
 export function MoreSheet() {
@@ -23,9 +22,10 @@ export function MoreSheet() {
       <div role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}
         className="surface sheet-up w-full rounded-t-3xl border-t border-fg/10 p-3 pb-[calc(var(--safe-bottom)+1rem)] shadow-2xl">
         <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-fg/20" aria-hidden />
-        <Link to="/nerds" className={row} onClick={() => setMoreOpen(false)}><FlaskConical size={20} /> Stats for nerds</Link>
+        <Link to="/" className={row} onClick={() => setMoreOpen(false)}><Boxes size={20} /> Workspaces</Link>
+        <Link to="/templates" className={row} onClick={() => setMoreOpen(false)}><FilePlus2 size={20} /> Templates</Link>
+        <Link to="/runs" className={row} onClick={() => setMoreOpen(false)}><ChartNoAxesCombined size={20} /> Runs &amp; evidence</Link>
         <button className={row} onClick={() => { setMoreOpen(false); setSearchOpen(true); }}><Search size={20} /> Search</button>
-        <PhoneButton className="!px-4 !py-3 !text-base !text-stone-800" />
         <button className={row} onClick={toggle}>{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />} {theme === 'dark' ? 'Light theme' : 'Dark theme'}</button>
       </div>
     </div>,
