@@ -15,7 +15,7 @@ interface TemplateDef extends TemplateInfo { build: () => DesignDoc }
 export const TEMPLATES: TemplateDef[] = [
   {
     key: 'course-registration', name: 'Course Registration Rush', tier: 1,
-    summary: 'FFCS-style registration: 200 students race for seats in 1,200 sections.',
+    summary: 'FFCS-style registration: 150 students race for seats in 24,000 sections.',
     tags: ['overbooking', 'locks', 'capacity'], build: buildCourseRegistration,
   },
   {
