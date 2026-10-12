@@ -64,7 +64,13 @@ async function main() {
   }
   if (await isUp(WEB)) log('web already running on :5173, reusing it');
   else {
-    start('web', ['-w', 'web', 'run', 'dev']);
+    if (process.env.DEMO_DEV) start('web', ['-w', 'web', 'run', 'dev']);
+    else {
+      // Production build + preview: stable for a live demo (no HMR surprises while files change) and lighter on the laptop.
+      log('building web (set DEMO_DEV=1 for the Vite dev server)');
+      run('npm', ['-w', 'web', 'run', 'build']);
+      start('web', ['-w', 'web', 'run', 'preview', '--', '--port', '5173', '--strictPort']);
+    }
     await waitFor(WEB, 'web');
   }
 
