@@ -3,7 +3,7 @@ const call=async(m,p,b)=>{const r=await fetch(A+p,{method:m,headers:{'content-ty
 const proj=await call('POST','/templates/course-registration/instantiate',{});
 const pid=proj.projectId;
 async function run(strategy){
-  const s=await call('POST',`/projects/${pid}/runs`,{kind:'LOAD',overrides:{strategy}});
+  const s=await call('POST',`/projects/${pid}/runs`,{kind:'LOAD',overrides:{strategy,...(process.env.VUS?{vus:+process.env.VUS}:{})}});
   for(;;){await new Promise(r=>setTimeout(r,2000));const r=await call('GET','/runs/'+s.runId);if(['COMPLETED','FAILED'].includes(r.run.status))return r;}
 }
 const show=(label,r)=>{const t=r.txnStats.find(x=>x.txnName==='search_sections');const s=r.statementStats.find(x=>/slot/.test(x.digestText));console.log(label,'tps',r.run.tpsAvg,'p95',r.run.p95Ms,'| search p50',t.p50Ms,'p95',t.p95Ms,'db',t.dbMs,'| stmt avg',s?.avgMs,'rows',s?.rowsExamined,'| SLO',r.run.sloPass)};

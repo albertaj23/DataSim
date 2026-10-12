@@ -1,7 +1,7 @@
 import { DesignDoc } from '@datasim/shared';
 import { DT3, INT, SMALLINT, TINYINT, POS, char, col, decimal, edge, fkRef, fromTable, pattern, pick, uniformInt, varchar } from './dsl.js';
 
-const SLOTS = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'A2', 'B2', 'C2', 'D2', 'E2'];
+const SLOTS = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'TA1', 'TB1', 'TC1', 'TD1', 'TE1', 'TF1', 'TG1', 'A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'TA2', 'TB2', 'TC2', 'TD2', 'TE2', 'TF2', 'TG2', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'];
 
 /** Lookup step shared by the register variants: counter, capacity, version and course of one section. */
 const READ_SECTION = (lock = '') => `SELECT enrolled, capacity, course_id, version FROM section WHERE section_id = :sid${lock}`;
@@ -18,7 +18,7 @@ export function buildCourseRegistration(): DesignDoc {
   return DesignDoc.parse({
     seed: 42,
     nodes: [
-      { id: 'users', type: 'users', name: 'Students', position: POS.users, config: { vus: 200, thinkMinMs: 50, thinkMaxMs: 150, thinkDist: 'uniform', pattern: 'spike', durationS: 20, warmupS: 3 } },
+      { id: 'users', type: 'users', name: 'Students', position: POS.users, config: { vus: 150, thinkMinMs: 50, thinkMaxMs: 150, thinkDist: 'uniform', pattern: 'spike', durationS: 20, warmupS: 3 } },
       { id: 'lb', type: 'lb', name: 'Load balancer', position: POS.lb, config: { algorithm: 'round-robin' } },
       { id: 'app', type: 'app', name: 'App servers', position: POS.app, config: { instances: 2, workers: 32, processingMeanMs: 2, processingJitterMs: 1, poolSize: 16, strategy: 'naive', retry: { max: 5, backoffMs: 5 } } },
       { id: 'cache', type: 'redis', name: 'Redis cache', position: POS.cache, config: { ttlS: 30 } },
@@ -74,7 +74,7 @@ export function buildCourseRegistration(): DesignDoc {
         },
         {
           // Deliberately no index on `slot`: the advisor finds the full scan in search_sections.
-          name: 'section', seedRows: 40000, position: { x: 680, y: 160 }, primaryKey: ['section_id'],
+          name: 'section', seedRows: 24000, position: { x: 680, y: 160 }, primaryKey: ['section_id'],
           columns: [
             col('section_id', INT, { ai: true }),
             col('course_id', INT, { seed: fkRef('course', 'course_id', 'zipf', 1.1) }),
