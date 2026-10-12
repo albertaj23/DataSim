@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   isTerminal, validateDesign,
-  type CompareStrategiesResponse, type ProjectDetail, type RunReport, type RunSummary, type StartRunResponse,
+  type CompareStrategiesResponse, type HealthResponse, type ProjectDetail, type RunReport, type RunSummary, type StartRunResponse,
 } from '@datasim/shared';
 import { api, errorMessage } from '../../lib/api';
 import { useDesignStore } from '../../lib/designStore';
 import { useRunEvents } from '../../lib/socket';
+import { useHealth } from '../../lib/useHealth';
 import { useToast } from '../../ui';
+import { isCompareReport } from './compare';
 import { flushSave } from './persist';
 import { createSampleBuffer, isActive, useRunStore } from './runStore';
 import { useStudioUi } from './studioUi';
@@ -33,7 +35,6 @@ function RunEventBridge({ runId, onFinished }: { runId: string; onFinished: (run
 /** Mount once in the Studio: owns socket subscriptions, finish handling, the `?run=` deep link and the polling safety net. */
 export function RunController({ projectId }: { projectId: string }) {
   const toast = useToast();
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const runId = useRunStore((s) => s.runId);
   const children = useRunStore((s) => s.children);
@@ -54,19 +55,26 @@ export function RunController({ projectId }: { projectId: string }) {
     const report = await fetchReport(id);
     if (!report) { finalizing.current = null; return; }
     const run = report.run;
-    if (compare) {
-      toast.success('Strategy comparison finished', 'Opening the comparison.');
-      const ids = rs().children;
-      navigate(`/compare?ids=${ids.join(',')}`);
-      return;
-    }
-    if (run.status === 'FAILED') toast.error('Run failed', run.errorText ?? 'The run stopped with an error.');
-    else if (run.status === 'CANCELLED') toast.info('Run cancelled');
-    else if (report.slo) toast(report.slo.pass ? 'SLO pass' : 'SLO fail', { tone: report.slo.pass ? 'success' : 'error', description: report.slo.pass ? `p95 ${Math.round(run.p95Ms)} ms, ${run.invariantViolations} invariant violation(s).` : report.slo.reasons.join(' · ') });
-    else toast.success('Run finished');
-  }, [fetchReport, navigate, toast]);
+    // The SLO verdict lives in the Live tab banner; toasts are for failures only. A comparison ends on its result strip.
+    if (run.status === 'FAILED') toast.error(compare ? 'Strategy comparison failed' : 'Run failed', run.errorText ?? 'The run stopped with an error.');
+    else if (run.status === 'CANCELLED') toast.info(compare ? 'Strategy comparison cancelled' : 'Run cancelled');
+    else if (compare) toast.success('Strategy comparison finished');
+  }, [fetchReport, toast]);
 
-  // Deep link `?run=<id>` and "last run of this project" on open. Skipped when the store already follows this project's run.
+  /** Follow a run that is already under way (reload, second tab): join its room and show the live view. */
+  const attach = useCallback(async (report: RunReport) => {
+    const id = report.run.runId;
+    let children: string[] = [];
+    if (isCompareReport(report)) {
+      const list = await api.get<RunSummary[]>(`/runs?projectId=${projectId}&kind=STRATEGY_CHILD`);
+      if (list.ok && Array.isArray(list.body)) children = list.body.filter((r) => r.parentRunId === id).sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '')).map((r) => r.runId);
+    }
+    rs().begin(projectId, id, children);
+    useRunStore.setState({ status: report.run.status, samples: report.samples });
+    useStudioUi.getState().openPanel('live');
+  }, [projectId]);
+
+  // Deep link `?run=<id>`, the project's active run, or its last run, on open. Skipped when the store already follows this project's run.
   useEffect(() => {
     const st = rs();
     if (st.projectId === projectId && st.runId) return;
@@ -77,10 +85,19 @@ export function RunController({ projectId }: { projectId: string }) {
       if (wanted) {
         const report = await fetchReport(wanted);
         if (cancelled) return;
-        if (report && !isTerminal(report.run.status)) rs().begin(projectId, wanted);
+        if (report && !isTerminal(report.run.status)) await attach(report);
         if (report) useStudioUi.getState().openPanel('live');
         else toast.error('Run not found', 'The run in the link does not exist.');
         return;
+      }
+      // A run of this project may be running right now (opened or reloaded mid-run): attach to it.
+      const health = await api.get<HealthResponse>('/health');
+      const activeId = health.ok ? health.body.activeRunId : null;
+      if (cancelled) return;
+      if (activeId) {
+        const res = await api.get<RunReport>(`/runs/${activeId}`);
+        if (cancelled) return;
+        if (res.ok && res.body.run.projectId === projectId && !isTerminal(res.body.run.status)) { await attach(res.body); return; }
       }
       const list = await api.get<RunSummary[]>(`/runs?projectId=${projectId}`);
       if (cancelled || !list.ok || !Array.isArray(list.body)) return;
@@ -113,6 +130,23 @@ export function RunController({ projectId }: { projectId: string }) {
       {[runId, ...children].map((id) => <RunEventBridge key={id} runId={id} onFinished={(fid) => { if (fid === runId) void finalize(fid); }} />)}
     </>
   );
+}
+
+/** True while another project's run holds the global run lock (this Studio cannot start one). */
+export function useForeignRun(projectId: string): boolean {
+  const { health } = useHealth();
+  const mine = useRunStore((s) => s.runId);
+  const children = useRunStore((s) => s.children);
+  const activeId = health?.activeRunId ?? null;
+  const [owner, setOwner] = useState<{ id: string; projectId: string } | null>(null);
+  const known = !!activeId && (activeId === mine || children.includes(activeId));
+  useEffect(() => {
+    if (!activeId || known || owner?.id === activeId) return;
+    let live = true;
+    void api.get<RunReport>(`/runs/${activeId}`).then((r) => { if (live && r.ok) setOwner({ id: activeId, projectId: r.body.run.projectId }); });
+    return () => { live = false; };
+  }, [activeId, known, owner?.id]);
+  return !!activeId && !known && owner?.id === activeId && owner.projectId !== projectId;
 }
 
 /** Imperative run actions for the top bar and shortcuts. */

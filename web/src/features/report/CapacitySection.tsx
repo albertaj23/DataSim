@@ -60,9 +60,9 @@ export function CapacitySection({ report, capacity }: { report: RunReport; capac
         <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
           <Stat label="Knee" value={capacity.kneeVus != null ? `${capacity.kneeVus} VUs` : 'none'} sub={capacity.kneeVus != null ? 'SLO break or flat TPS + p95 growth' : 'within tested load'} provenance="MEASURED" tone={capacity.kneeVus != null ? 'bad' : undefined} />
           <Stat label="Sustained" value={capacity.sustainedVus != null ? `${capacity.sustainedVus} VUs` : 'none'} sub={`p95 ≤ ${formatMs(slo.p95Ms)}`} provenance="MEASURED" />
-          <Stat label="Peak N*" value={fit ? (peak ? `${formatNumber(fit.nPeak)} VUs` : 'no peak') : '-'} sub={fit && !peak ? 'no retrograde region' : 'where X(N) tops out'} provenance="PROJECTED" />
-          <Stat label="X max" value={fit ? `${formatNumber(fit.xMax)} tps` : '-'} sub="USL ceiling" provenance="PROJECTED" />
-          <Stat label="R²" value={fit ? fit.r2.toFixed(3) : '-'} sub={fit ? `σ ${fit.sigma.toExponential(2)} · κ ${fit.kappa.toExponential(2)}` : 'fit unavailable'} provenance="PROJECTED" />
+          <Stat label="Peak N*" value={fit ? (peak ? `${formatNumber(peak.nPeak)} VUs` : 'no peak') : '-'} sub={fit && !peak ? 'no saturation observed' : 'where X(N) tops out'} provenance="PROJECTED" />
+          <Stat label="X max" value={fit ? (fit.xMax !== null ? `${formatNumber(fit.xMax)} tps` : 'not reached') : '-'} sub={fit && fit.xMax === null ? 'no saturation within tested load' : 'USL ceiling'} provenance="PROJECTED" />
+          <Stat label="R²" value={fit ? fit.r2.toFixed(2) : '-'} sub={fit ? `σ ${fit.sigma.toExponential(2)} · κ ${fit.kappa.toExponential(2)}` : 'fit unavailable'} provenance="PROJECTED" />
           <Stat label="Steps" value={String(capacity.points.length)} sub={capacity.points.map((p) => p.vus).join(' · ')} provenance="MEASURED" />
         </div>
 

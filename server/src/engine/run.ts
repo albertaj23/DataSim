@@ -123,7 +123,7 @@ async function analyze(ctx: RunCtx, load: LoadResult, admin: Connection, digests
   const invariants = await checkInvariants(admin, design);
   const explained = await explainStatements(admin, design, load);
   const statements = buildStatementStats(digestRows, explained);
-  const slo = sloVerdict(design, load);
+  const slo = sloVerdict(design, load, invariants);
   const findings = buildFindings({ design, strategy: ctx.resolved.strategy, isolation: ctx.resolved.isolation, load, invariants, explained, statements, slo });
   return { invariants, statements, findings, slo, bottleneck: detectBottleneck(design, load) };
 }
@@ -233,6 +233,7 @@ async function executeCapacity(ctx: RunCtx): Promise<void> {
   const reasons: string[] = [];
   if (sloBrokenAt !== null) { const p = points.find((x) => x.vus === sloBrokenAt)!; reasons.push(`SLO breaks at ${sloBrokenAt} VUs (p95 ${Math.round(p.p95Ms)} ms, error rate ${round(p.errorRate * 100, 2)}%)`); }
   else if (kneeVus !== null) reasons.push(`Throughput knee at ${kneeVus} VUs: TPS gain below 10% while p95 grew over 50%`);
+  const invReasons = ref.analysis.slo.reasons.filter((x) => x.startsWith('Invariant '));
   const findings: Finding[] = [...ref.analysis.findings];
   findings.push({
     findingNo: 0, severity: 'INFO', kind: 'OTHER', title: kneeVus === null ? 'No scalability knee within the tested load' : `Scalability knee at ${kneeVus} VUs`,
@@ -244,13 +245,14 @@ async function executeCapacity(ctx: RunCtx): Promise<void> {
   const all = perStep.flatMap((s) => s.load.samples);
   const lockWaits = ref.load.lockWaits;
   const settings = loadSettings(ctx, ref.load, {
-    capacity: { steps, stepDurationS: stepDur, warmupS: warm, reprovisionPerStep: reprovision, refStepVus: ref.vus }, littlesLaw: little,
+    capacity: { steps, stepDurationS: stepDur, warmupS: warm, reprovisionPerStep: reprovision, refStepVus: ref.vus }, headlineStep: { vus: ref.vus }, littlesLaw: little,
     durationS: steps.length * stepDur, provision: provInfo,
   });
   await persistFinal({
-    runId: ctx.runId, settings, totals: { ...totalsOf(ref.load), count: perStep.reduce((s, x) => s + x.load.totals.count, 0), committed: perStep.reduce((s, x) => s + x.load.totals.committed, 0), rejected: perStep.reduce((s, x) => s + x.load.totals.rejected, 0), errored: perStep.reduce((s, x) => s + x.load.totals.errored, 0), retries: perStep.reduce((s, x) => s + x.load.totals.retries, 0), deadlocks: perStep.reduce((s, x) => s + x.load.totals.deadlocks, 0), lockTimeouts: perStep.reduce((s, x) => s + x.load.totals.lockTimeouts, 0) },
+    // Headline counters, latency, txn stats and statements all come from the same (sustained) step, so the report is internally consistent.
+    runId: ctx.runId, settings, totals: totalsOf(ref.load),
     cacheHitRatio: ref.load.cache.ratio,
-    slo: { pass: kneeVus === null && sloBrokenAt === null, reasons }, bottleneck: ref.analysis.bottleneck,
+    slo: { pass: kneeVus === null && sloBrokenAt === null && invReasons.length === 0, reasons: [...invReasons, ...reasons] }, bottleneck: ref.analysis.bottleneck,
     samples: all, txnStats: ref.load.txnStats, statements: ref.analysis.statements, lockWaits, invariants: ref.analysis.invariants, findings,
     capacity: { points, fit, kneeVus, sustainedVus, sentence }, status: 'COMPLETED',
   });

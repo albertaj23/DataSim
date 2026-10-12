@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DesignDoc, type Finding, type RunReport } from '@datasim/shared';
-import { compareBlockReason, compareValue, diffDesigns, diffFindings, diffRuns, findingKey, formatDelta, invariantMatrix, overlaySeries, runLabels } from './diff';
+import { compareBlockReason, orderForCompare, runLetter, compareValue, diffDesigns, diffFindings, diffRuns, findingKey, formatDelta, invariantMatrix, overlaySeries, runLabels } from './diff';
 
 const design = (patch: (d: DesignDoc) => void = () => undefined): DesignDoc => {
   const d = DesignDoc.parse({
@@ -168,5 +168,16 @@ describe('compareBlockReason', () => {
     expect(compareBlockReason([r(), r(), r(), r(), r(), r()])).toMatch(/up to 5/);
     expect(compareBlockReason([r(), r('q')])).toMatch(/same project/);
     expect(compareBlockReason([r(), r('p', 'RUNNING')])).toMatch(/completed/);
+  });
+});
+
+describe('runLetter and orderForCompare', () => {
+  it('letters run A to E for the five-run maximum', () => {
+    expect([0, 1, 2, 3, 4].map(runLetter)).toEqual(['A', 'B', 'C', 'D', 'E']);
+  });
+  it('orders oldest first, unstarted last, ties keep selection order', () => {
+    const r = (id: string, startedAt: string | null) => ({ id, startedAt });
+    const out = orderForCompare([r('c', '2026-10-12T12:00:00Z'), r('x', null), r('a', '2026-10-12T10:00:00Z'), r('b', '2026-10-12T10:00:00Z')]);
+    expect(out.map((x) => x.id)).toEqual(['a', 'b', 'c', 'x']);
   });
 });

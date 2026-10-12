@@ -58,7 +58,7 @@ export function WaitForGraph({ waits, lastSeen, victim }: { waits: WaitRow[]; la
 
 export function InvariantPanel({ invariant, loaded }: { invariant: InvariantResult | null; loaded: boolean }) {
   return (
-    <Panel title="Invariant check" subtitle="Active allocations per account must not exceed max streams" actions={<ProvenanceTag kind="MEASURED" />}>
+    <Panel title="Invariant check" subtitle="Active allocations per account must not exceed the quota (max active)" actions={<ProvenanceTag kind="MEASURED" />}>
       {!loaded ? (
         <p className="text-sm text-muted">Load a scenario to check the invariant.</p>
       ) : !invariant ? (
@@ -70,7 +70,7 @@ export function InvariantPanel({ invariant, loaded }: { invariant: InvariantResu
             <span className="text-xs text-muted">re-checked every 500 ms against the scenario&apos;s accounts</span>
           </div>
           {invariant.breaches.map((b) => (
-            <p key={b.accountId} className="font-mono text-xs text-bad">account {b.accountId}: {b.active} active, max streams {b.maxStreams}</p>
+            <p key={b.accountId} className="font-mono text-xs text-bad">account {b.accountId}: {b.active} active, quota {b.maxStreams}</p>
           ))}
           {invariant.violations === 0 && <p className="text-xs text-faint">Uncommitted changes are invisible to this check, so it moves only after COMMIT.</p>}
         </div>

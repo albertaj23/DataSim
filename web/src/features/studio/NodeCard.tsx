@@ -37,17 +37,17 @@ function NodeCardImpl({ id, selected }: NodeProps<CardNode>) {
     <div
       data-testid={`node-${node.type}`}
       className={cn(
-        'relative h-16 w-[248px] rounded-lg border bg-surface-2 transition-[border-color,box-shadow] duration-150 ease-out',
-        selected ? 'border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_20%,transparent)]' : tone === 'bad' ? 'border-bad shadow-[0_0_0_3px_color-mix(in_srgb,var(--bad)_16%,transparent)]' : tone === 'warn' ? 'border-warn shadow-[0_0_0_3px_color-mix(in_srgb,var(--warn)_16%,transparent)]' : 'border-line hover:border-line-strong',
+        'relative h-16 w-[248px] rounded-lg border bg-[var(--card-bg)] transition-[border-color,box-shadow] duration-150 ease-out',
+        selected ? 'border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_20%,transparent)]' : tone === 'bad' ? 'border-bad shadow-[0_0_0_3px_color-mix(in_srgb,var(--bad)_16%,transparent)]' : tone === 'warn' ? 'border-warn shadow-[0_0_0_3px_color-mix(in_srgb,var(--warn)_16%,transparent)]' : 'border-[var(--card-line)] hover:border-line-strong',
       )}
     >
       {node.type !== 'users' && <Handle type="target" position={Position.Left} className="ds-handle" />}
       <Handle type="source" position={Position.Right} className={cn('ds-handle', (node.type === 'redis' || node.type === 'mysql') && 'ds-handle-off')} isConnectable={node.type !== 'redis' && node.type !== 'mysql'} />
 
       <div className="flex h-full">
-        <div className="flex w-12 shrink-0 flex-col items-center justify-center gap-1 rounded-l-[7px] border-r border-line bg-surface">
+        <div className="flex w-12 shrink-0 flex-col items-center justify-center gap-1 rounded-l-[7px] border-r border-[var(--card-line)] bg-[var(--tile-bg)]">
           <Icon size={18} className="text-muted" />
-          <span className="font-mono text-[10px] leading-none text-faint">{meta.tag}</span>
+          <span className="font-mono text-[10px] leading-none text-muted">{meta.tag}</span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 pl-2.5 pr-1">
           <div className="flex items-center gap-1">

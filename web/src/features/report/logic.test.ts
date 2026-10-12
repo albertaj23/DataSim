@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { uslThroughput, type CapacityFit, type CapacityPoint, type LockWaitRow, type RunReport } from '@datasim/shared';
-import { aggregateLockWaits, buildKpis, capacityCurve, evidenceChips, explainTables, hasFinitePeak, layoutNodes, littleLine, rerunOverrides, waitGraph } from './logic';
+import { aggregateLockWaits, buildKpis, capacityCurve, evidenceChips, evidenceNumber, explainTables, hasFinitePeak, layoutNodes, littleLine, rerunOverrides, waitGraph } from './logic';
 
 const pts: CapacityPoint[] = [10, 25, 50, 100].map((vus, i) => ({ stepNo: i + 1, vus, tps: 100 * vus / (1 + 0.02 * (vus - 1)), p50Ms: 10, p95Ms: 20 + vus, errorRate: 0 }));
 const fit: CapacityFit = { lambda: 100, sigma: 0.02, kappa: 0.0002, nPeak: Math.sqrt(0.98 / 0.0002), xMax: 0, r2: 0.99 };
@@ -20,7 +20,7 @@ describe('capacityCurve', () => {
   it('keeps the measured points exactly and extends past the peak N* when it is near', () => {
     const { rows, end } = capacityCurve(pts, fit);
     expect(rows.find((r) => r.n === 25)!.tps).toBeCloseTo(pts[1]!.tps);
-    expect(end).toBeGreaterThanOrEqual(Math.ceil(fit.nPeak * 1.25));
+    expect(end).toBeGreaterThanOrEqual(Math.ceil(fit.nPeak! * 1.25));
   });
   it('returns only measured rows without a fit', () => {
     const { rows } = capacityCurve(pts, null);
@@ -74,6 +74,21 @@ describe('evidenceChips', () => {
     expect(chips).toContainEqual({ label: 'waiting', value: 'register 1,163' });
     expect(chips.map((c) => c.label)).not.toContain('statement');
     expect(chips.map((c) => c.label)).not.toContain('nested');
+  });
+});
+
+describe('evidenceNumber', () => {
+  it('shows shares and ratios as percentages and R^2 with 2 decimals', () => {
+    expect(evidenceNumber('bufferPoolHitRatio', 0.995)).toBe('99.5%');
+    expect(evidenceNumber('shareOfWaits', 0.843)).toBe('84.3%');
+    expect(evidenceNumber('cacheHitRate', 0.5)).toBe('50%');
+    expect(evidenceNumber('r2', 0.97123)).toBe('0.97');
+  });
+  it('leaves other numbers alone', () => {
+    expect(evidenceNumber('rowsExaminedPerExec', 1392)).toBe('1,392');
+    expect(evidenceNumber('avgMs', 3.14159)).toBe('3.142');
+    expect(evidenceNumber('ratioOverOne', 2.5)).toBe('2.5');
+    expect(evidenceNumber('waitRatio', 1)).toBe('1');
   });
 });
 

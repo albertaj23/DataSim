@@ -12,16 +12,18 @@ export function ScenarioPanel({ scenarios, selectedId, onSelect, scenario, state
 }) {
   const loadedId = state?.scenarioId ?? null;
   const progress = scenario && loadedId === scenario.id ? suggestedProgress(scenario.suggestedOrder, state) : 0;
-  const differs = !!loadedId && loadedId !== selectedId;
+  const matches = !!loadedId && loadedId === selectedId;
+  const differs = !!loadedId && !matches;
   return (
     <Panel title="Scenario" subtitle="Pick a schedule, load it, then step the two transactions in any order">
       <div className="grid gap-x-8 gap-y-4 lg:grid-cols-[400px_1fr]">
         <div className="flex flex-col gap-3">
           <Select aria-label="Scenario" value={selectedId} onValueChange={onSelect} options={scenarios.map((s) => ({ value: s.id, label: s.title }))} placeholder="Loading scenarios" />
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" icon={<Upload size={16} />} onClick={onLoad} disabled={busy || !selectedId}>{differs || !loadedId ? 'Load scenario' : 'Reload scenario'}</Button>
+            <Button variant="primary" icon={<Upload size={16} />} onClick={onLoad} disabled={busy || !selectedId}>{matches ? 'Reload scenario' : 'Load scenario'}</Button>
             <Button icon={<RotateCcw size={16} />} onClick={onReset} disabled={busy || !loadedId}>Reset<Kbd className="ml-1">R</Kbd></Button>
           </div>
+          {differs && <p className="text-xs text-warn">Another scenario is loaded. Load this one to step it.</p>}
           {scenario && (
             <div className="flex flex-wrap gap-1.5">
               {scenario.syllabusRefs.map((tag) => <Pill key={tag} tone="neutral">{tag}</Pill>)}
@@ -54,9 +56,13 @@ export function ScenarioPanel({ scenarios, selectedId, onSelect, scenario, state
                   );
                 })}
               </ol>
-              <Button size="sm" icon={<Play size={14} />} onClick={onRunNext} disabled={busy || !next || loadedId !== selectedId}>
-                {next ? `Run ${orderLabel(next)}` : 'Script finished'}<Kbd className="ml-1">N</Kbd>
-              </Button>
+              {matches ? (
+                <Button size="sm" icon={<Play size={14} />} onClick={onRunNext} disabled={busy || !next}>
+                  {next ? `Run ${orderLabel(next)}` : 'Script finished'}<Kbd className="ml-1">N</Kbd>
+                </Button>
+              ) : (
+                <span className="text-xs text-faint">Load the scenario to run this order</span>
+              )}
             </div>
           </div>
         ) : (

@@ -102,6 +102,11 @@ describe('mini end-to-end run', () => {
     const nr = (await loadReport(naive.runId))!;
     expect(nr.invariants[0]!.violations, 'naive should overbook with 40 concurrent registrations on a 5-seat section').toBeGreaterThan(0);
     expect(naive.invariantViolations).toBeGreaterThan(0);
+    // an invariant violation fails the verdict even though latency and errors are inside the SLO, and is listed first
+    expect(naive.sloPass).toBe(false);
+    expect(nr.slo!.pass).toBe(false);
+    expect(nr.slo!.reasons[0]).toMatch(/^Invariant no_overbooking violated \(\d+ violations?\)$/);
+    expect(reportToMarkdown(nr)).toContain('SLO verdict: **FAIL** (Invariant no_overbooking violated');
     const finding = nr.findings.find((f) => f.kind === 'INVARIANT_NAIVE')!;
     expect(finding).toBeDefined();
     expect(finding.severity).toBe('HIGH');
@@ -111,6 +116,7 @@ describe('mini end-to-end run', () => {
     const ar = (await loadReport(atomic.runId))!;
     expect(ar.invariants[0]).toMatchObject({ violations: 0, passed: true });
     expect(atomic.invariantViolations).toBe(0);
+    expect(atomic.sloPass).toBe(true);
     expect(ar.findings.find((f) => f.kind === 'INVARIANT_NAIVE')).toBeUndefined();
   }, 300_000);
 

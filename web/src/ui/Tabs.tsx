@@ -13,7 +13,7 @@ export function TabsTrigger({ className, children, count, ...rest }: ComponentPr
   return (
     <RTabs.Trigger
       className={cn(
-        '-mb-px inline-flex h-8 items-center gap-1.5 border-b-2 border-transparent px-2.5 text-sm text-muted transition-colors duration-150 ease-out hover:text-fg data-[state=active]:border-accent data-[state=active]:text-fg',
+        '-mb-px inline-flex h-8 items-center gap-1.5 border-b-2 border-transparent px-2.5 text-sm text-muted transition-colors duration-150 ease-out hover:text-fg focus-visible:bg-surface-3 focus-visible:text-fg focus-visible:outline-none data-[state=active]:border-accent data-[state=active]:text-fg',
         className,
       )}
       {...rest}

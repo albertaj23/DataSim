@@ -1,0 +1,13 @@
+import {launch,BASE,sleep,idle} from './lib.mjs';
+const rid='de22a69c-e271-4b24-b8ab-8ab6901f0ffb';
+const {page,shot,done}=await launch();
+await idle();
+await page.goto(BASE+'runs/'+rid); await sleep(3000);
+await shot('70-atomic-report-top');
+await page.getByText('Show statement').first().click(); await sleep(500); await shot('71-fullscan-finding');
+const btns=page.getByRole('button',{name:/Apply fix/});
+console.log('apply buttons',await btns.count());
+await btns.first().click(); await sleep(3000);
+await shot('72-after-apply'); console.log('url',page.url()); console.log('toasts',await page.locator('[role=alert],[role=status]').allInnerTexts());
+console.log(await page.locator('body').innerText().then(t=>t.slice(0,500)));
+await done('s12');

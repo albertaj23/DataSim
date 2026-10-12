@@ -100,7 +100,7 @@ export function SchemaCanvas({ tables, selected, onSelect, problemByTable, faile
   useEffect(() => {
     if (fitToken === lastFit.current) return;
     lastFit.current = fitToken;
-    const id = requestAnimationFrame(() => rf.fitView({ padding: 0.15, maxZoom: 1, duration: 220 }));
+    const id = requestAnimationFrame(() => rf.fitView({ padding: 0.06, maxZoom: 1, duration: 220 }));
     return () => cancelAnimationFrame(id);
   }, [fitToken, rf]);
   const lastFocus = useRef(focusRequest?.token);
@@ -125,7 +125,7 @@ export function SchemaCanvas({ tables, selected, onSelect, problemByTable, faile
         onConnect={handleConnect}
         connectionMode={ConnectionMode.Loose}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+        fitViewOptions={{ padding: 0.06, maxZoom: 1 }}
         minZoom={0.2}
         maxZoom={1.5}
         snapToGrid
@@ -135,7 +135,7 @@ export function SchemaCanvas({ tables, selected, onSelect, problemByTable, faile
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="var(--grid-dot)" />
         <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap pannable zoomable position="bottom-right" nodeColor="var(--surface-3)" nodeStrokeColor="var(--line-strong)" maskColor="rgb(0 0 0 / 0.45)" style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8 }} />
+        <MiniMap pannable zoomable position="bottom-right" bgColor="var(--surface)" nodeColor="var(--mm-node)" nodeStrokeColor="var(--line-strong)" maskColor="var(--mm-mask)" style={{ border: '1px solid var(--line)', borderRadius: 8 }} />
       </ReactFlow>
     </div>
   );

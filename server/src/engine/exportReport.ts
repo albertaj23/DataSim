@@ -28,7 +28,7 @@ export function reportToMarkdown(r: RunReport): string {
     out.push(table(['Step', 'VUs', 'TPS', 'p50 ms', 'p95 ms', 'Error rate'], r.capacity.points.map((p) => [p.stepNo, p.vus, f(p.tps), f(p.p50Ms), f(p.p95Ms), pct(p.errorRate)])), '');
     if (r.capacity.fit) {
       const x = r.capacity.fit;
-      out.push(`USL fit (PROJECTED): lambda ${f(x.lambda, 2)}, sigma ${x.sigma.toExponential(3)}, kappa ${x.kappa.toExponential(3)}, N* ${f(x.nPeak, 0)}, Xmax ${f(x.xMax, 0)} tps, R2 ${x.r2.toFixed(3)}. Knee: ${r.capacity.kneeVus ?? 'none'}; sustained: ${r.capacity.sustainedVus ?? 'none'} VUs.`, '');
+      out.push(`USL fit (PROJECTED): lambda ${f(x.lambda, 2)}, sigma ${x.sigma.toExponential(3)}, kappa ${x.kappa.toExponential(3)}, N* ${x.nPeak === null ? 'none (no saturation observed)' : f(x.nPeak, 0)}, Xmax ${x.xMax === null ? 'none' : `${f(x.xMax, 0)} tps`}, R2 ${x.r2.toFixed(3)}. Knee: ${r.capacity.kneeVus ?? 'none'}; sustained: ${r.capacity.sustainedVus ?? 'none'} VUs.`, '');
     }
   }
 

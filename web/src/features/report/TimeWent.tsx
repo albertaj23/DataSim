@@ -1,7 +1,7 @@
 import type { RunReport, TxnStat } from '@datasim/shared';
 import { formatMs, formatNumber } from '../../lib/format';
 import { Pill, TBody, TD, TH, THead, TR, Table, cn } from '../../ui';
-import { TimeBar, TimeLegend } from '../charts';
+import { TIME_PARTS, TimeBar, TimeLegend } from '../charts';
 import { phaseShare } from './logic';
 import { Panel, Section } from './Section';
 
@@ -20,13 +20,22 @@ export function TimeWent({ txns }: { txns: TxnStat[] }) {
             {txns.map((t, i) => {
               const { total, dominant } = phaseShare(t);
               return (
-                <li key={t.txnName} className="grid grid-cols-[148px_1fr_160px] items-center gap-3" data-testid={`time-${t.txnName}`}>
-                  <span className="truncate font-mono text-xs text-fg" title={t.txnName}>{t.txnName}</span>
-                  <div style={{ width: `${max > 0 ? Math.max(4, (totals[i]! / max) * 100) : 100}%` }}><TimeBar parts={t} className="h-2.5" /></div>
-                  <span className="flex items-baseline justify-end gap-2 font-mono text-xs tnum">
-                    <span className="text-fg">{formatMs(total)}</span>
-                    <span className="text-faint">{dominant}</span>
-                  </span>
+                <li key={t.txnName} className="grid grid-cols-[148px_1fr] items-start gap-3" data-testid={`time-${t.txnName}`}>
+                  <div className="min-w-0">
+                    <div className="truncate font-mono text-xs text-fg" title={t.txnName}>{t.txnName}</div>
+                    <div className="font-mono text-[11px] text-muted tnum" title={`Mean latency per request; mostly ${dominant}`}>mean {formatMs(total)}</div>
+                  </div>
+                  <div className="min-w-0">
+                    <div style={{ width: `${max > 0 ? Math.max(4, (totals[i]! / max) * 100) : 100}%` }}><TimeBar parts={t} className="h-2.5" /></div>
+                    {/* Per-row legend: what the mean is made of, in ms. */}
+                    <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5" aria-label={`${t.txnName} phases`}>
+                      {TIME_PARTS.filter((p) => t[p.key] > 0).map((p) => (
+                        <li key={p.key} className="flex items-center gap-1 font-mono text-[11px] text-muted tnum">
+                          <span className="inline-block h-1.5 w-1.5 rounded-sm" style={{ background: p.color }} />{p.label} {formatMs(t[p.key])}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </li>
               );
             })}

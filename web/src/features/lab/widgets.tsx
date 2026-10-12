@@ -84,10 +84,15 @@ export function LegacyNames({ className }: { className?: string }) {
   return (
     <p className={cn('text-xs text-faint', className)}>
       Legacy table names: <span className="font-mono">account</span> = user_account, <span className="font-mono">device</span> = client,{' '}
-      <span className="font-mono">playback_session</span> = allocation, <span className="font-mono">playback_event</span> = operation_event,{' '}
+      <span className="font-mono">playback_session</span> = allocation, <span className="font-mono">playback_event</span> = operation_event, <span className="font-mono">song</span> = resource,{' '}
       <span className="font-mono">experiment_run</span> = experiment_run. These tables live in the <span className="font-mono">datasim</span> database and are not renamed.
     </p>
   );
+}
+
+/** Small caption under a results table. */
+export function TableNote({ children }: { children: ReactNode }) {
+  return <p className="mt-1.5 text-xs text-faint">{children}</p>;
 }
 
 /** Determinate progress bar. */

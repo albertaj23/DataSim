@@ -3,7 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import type { NodeType } from '@datasim/shared';
 import { redo, undo, useDesignStore } from '../../lib/designStore';
 import { useToast } from '../../ui';
-import { autoLayout } from './layout';
+import { FIT, autoLayout } from './layout';
 import { addNode, duplicateNode, removeItems } from './nodes';
 import { useStudioUi } from './studioUi';
 
@@ -50,7 +50,7 @@ export function useStudioActions() {
     const layout = () => {
       const pos = autoLayout(useDesignStore.getState().design);
       update((d) => { for (const n of d.nodes) { const p = pos[n.id]; if (p) n.position = p; } });
-      requestAnimationFrame(() => requestAnimationFrame(() => void rf.fitView({ duration: 200, padding: 0.12, maxZoom: 1 })));
+      requestAnimationFrame(() => requestAnimationFrame(() => void rf.fitView({ ...FIT, duration: 200 })));
     };
 
     /** Select a node, bring it into view and move keyboard focus to the inspector. */

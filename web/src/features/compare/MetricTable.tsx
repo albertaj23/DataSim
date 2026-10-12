@@ -3,18 +3,23 @@ import { Section } from '../report/Section';
 import { TBody, TD, TH, THead, TR, Table, cn } from '../../ui';
 import { METRICS, compareValue, formatDelta, formatMetric, runLetter, type Verdict } from './diff';
 
+const LABEL_W = 200;
+const RUN_W = 200;
 const DELTA_TONE: Record<Verdict, string> = { better: 'text-ok', worse: 'text-bad', same: 'text-faint', none: 'text-faint' };
 
 /** One row per metric, one column per run; every run after the first shows its delta against run A (green better, red worse). */
 export function MetricTable({ runs, labels }: { runs: RunReport[]; labels: string[] }) {
   return (
     <Section id="metrics" title="Metrics" provenance="MEASURED" aside="deltas are against run A · green better, red worse">
-      <Table data-testid="metric-table">
+      {/* Fixed column widths so two runs do not spread label and values across the whole page. */}
+      <div className="w-fit max-w-full">
+      <Table data-testid="metric-table" className="table-fixed" style={{ width: LABEL_W + runs.length * RUN_W, maxWidth: '100%' }}>
+        <colgroup><col style={{ width: LABEL_W }} />{runs.map((r) => <col key={r.run.runId} style={{ width: RUN_W }} />)}</colgroup>
         <THead>
           <TR>
             <TH>Metric</TH>
             {runs.map((r, i) => (
-              <TH key={r.run.runId} align="right"><span className="inline-flex items-center gap-1.5"><span className="font-mono text-faint">{runLetter(i)}</span>{labels[i]}</span></TH>
+              <TH key={r.run.runId} align="right" className="whitespace-normal py-1 leading-tight"><span className="inline-flex items-center gap-1.5"><span className="font-mono text-faint">{runLetter(i)}</span>{labels[i]}</span></TH>
             ))}
           </TR>
         </THead>
@@ -41,6 +46,7 @@ export function MetricTable({ runs, labels }: { runs: RunReport[]; labels: strin
           })}
         </TBody>
       </Table>
+      </div>
     </Section>
   );
 }

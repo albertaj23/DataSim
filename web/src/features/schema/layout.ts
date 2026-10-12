@@ -9,7 +9,7 @@ export const tableHeight = (t: Table) => HEADER_H + t.columns.length * ROW_H + 6
 /** Left-to-right layered layout: referenced (parent) tables on the left, children on the right. Returns top-left corners. */
 export function layoutTables(schema: SchemaModel): Record<string, { x: number; y: number }> {
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 110, marginx: 0, marginy: 0 });
+  g.setGraph({ rankdir: 'LR', nodesep: 28, ranksep: 72, marginx: 0, marginy: 0 });
   g.setDefaultEdgeLabel(() => ({}));
   const names = new Set(schema.tables.map((t) => t.name));
   for (const t of schema.tables) g.setNode(t.name, { width: TABLE_W, height: tableHeight(t) });

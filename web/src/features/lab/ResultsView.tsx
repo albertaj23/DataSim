@@ -4,14 +4,15 @@ import { ChartCard } from '../charts';
 import { AXIS, GRID } from '../charts/common';
 import { Table, TBody, TD, TH, THead, TR, cn } from '../../ui';
 import { formatMs, formatNumber } from '../../lib/format';
-import { CHART_METRICS, metricOf, type ChartMetric, type ResultRow } from './logic';
-import { Segmented } from './widgets';
+import { CHART_METRICS, MEAN_NOTE, fmtMean, meanTitle, metricOf, type ChartMetric, type ResultRow } from './logic';
+import { Segmented, TableNote } from './widgets';
 
-const num = (n: number) => formatNumber(n, Number.isInteger(n) ? 0 : 2);
+const num = fmtMean;
 
 /** Results table. `lost` swaps the deadlocks column for nothing and renames violations to lost increments. */
 export function ResultsTable({ rows, kind }: { rows: ResultRow[]; kind: 'stream' | 'lost' }) {
   return (
+    <div>
     <Table aria-label="Experiment results">
       <THead>
         <tr>
@@ -20,8 +21,8 @@ export function ResultsTable({ rows, kind }: { rows: ResultRow[]; kind: 'stream'
           <TH align="right">Trials</TH>
           <TH align="right">{kind === 'stream' ? 'Violations' : 'Lost updates'}</TH>
           <TH align="right">Trials hit</TH>
-          <TH align="right">Retries</TH>
-          {kind === 'stream' && <TH align="right">Deadlocks</TH>}
+          <TH align="right">Retries / trial</TH>
+          {kind === 'stream' && <TH align="right">Deadlocks / trial</TH>}
           <TH align="right">Errors</TH>
           <TH align="right">p50</TH>
           <TH align="right">p95</TH>
@@ -36,16 +37,18 @@ export function ResultsTable({ rows, kind }: { rows: ResultRow[]; kind: 'stream'
             <TD align="right" mono>{r.trials}</TD>
             <TD align="right" mono className={cn(r.violations > 0 ? 'font-medium text-bad' : 'text-ok')}>{formatNumber(r.violations)}</TD>
             <TD align="right" mono className="text-muted">{r.violatingPct}%</TD>
-            <TD align="right" mono>{num(r.retries)}</TD>
-            {kind === 'stream' && <TD align="right" mono className={cn(r.deadlocks > 0 && 'text-warn')}>{num(r.deadlocks)}</TD>}
+            <TD align="right" mono title={meanTitle(r.retries, r.trials)}>{num(r.retries)}</TD>
+            {kind === 'stream' && <TD align="right" mono title={meanTitle(r.deadlocks, r.trials)} className={cn(r.deadlocks > 0 && 'text-warn')}>{num(r.deadlocks)}</TD>}
             <TD align="right" mono className={cn(r.errors > 0 && 'text-bad')}>{formatNumber(r.errors)}</TD>
-            <TD align="right" mono>{formatMs(r.p50)}</TD>
-            <TD align="right" mono>{formatMs(r.p95)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(r.p50)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(r.p95)}</TD>
             {kind === 'stream' && <TD align="right" mono>{num(r.rps)}/s</TD>}
           </TR>
         ))}
       </TBody>
     </Table>
+    <TableNote>{MEAN_NOTE}</TableNote>
+    </div>
   );
 }
 

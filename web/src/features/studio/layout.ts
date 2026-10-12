@@ -4,6 +4,8 @@ import { snap } from './nodes';
 
 export const NODE_W = 248;
 export const NODE_H = 64;
+/** fitView options shared by the canvas, auto layout and the resize re-fit. */
+export const FIT = { padding: 0.06, maxZoom: 1 } as const;
 
 const TYPE_ORDER: Record<NodeType, number> = { users: 0, lb: 1, app: 2, redis: 3, mysql: 3 };
 
@@ -18,13 +20,13 @@ export function autoLayout(design: Pick<DesignDoc, 'nodes' | 'edges'>): Record<s
     for (const n of [...design.nodes].sort((a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type])) {
       const col = TYPE_ORDER[n.type];
       const row = rows[col] ?? 0; rows[col] = row + 1;
-      out[n.id] = { x: snap(col * (NODE_W + 56)), y: snap(row * (NODE_H + 32)) };
+      out[n.id] = { x: snap(col * (NODE_W + 44)), y: snap(row * (NODE_H + 32)) };
     }
     return out;
   }
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 48, marginx: 0, marginy: 0 });
+  g.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 44, marginx: 0, marginy: 0 });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of design.nodes) g.setNode(n.id, { width: NODE_W, height: NODE_H });
   for (const e of design.edges) if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target);

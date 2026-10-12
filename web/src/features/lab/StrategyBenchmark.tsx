@@ -138,7 +138,7 @@ const ISOLATIONS: { value: 'default' | LabIsolation; label: string }[] = [
 ];
 const numOptions = (xs: number[], suffix = '') => xs.map((n) => ({ value: String(n), label: `${n}${suffix}` }));
 
-// ---------------------------------------------------------------- stream limit
+// ---------------------------------------------------------------- allocation limit
 
 function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean) => void }) {
   const { health } = useHealth();
@@ -175,7 +175,7 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
 
   return (
     <div className="flex flex-col gap-4">
-      <Panel title="Stream limit experiment" subtitle="N clients claim the same account at once, N trials per strategy; the invariant counts active allocations above the limit">
+      <Panel title="Allocation limit experiment" subtitle="N clients claim the same account at once, N trials per strategy; the invariant counts active allocations above the limit">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted" id="strategy-label">Strategies</span>
@@ -193,7 +193,7 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
               ))}
             </div>
             {!redisUp && <Notice tone="warn">Redis is unreachable, so REDIS_LEASE is disabled. Start it with npm run db:up.</Notice>}
-            {maxStreams > 1 && strategies.includes('CONSTRAINT') && <Notice tone="warn">CONSTRAINT only supports max streams = 1 and will be skipped.</Notice>}
+            {maxStreams > 1 && strategies.includes('CONSTRAINT') && <Notice tone="warn">CONSTRAINT only supports quota = 1 and will be skipped.</Notice>}
           </div>
 
           <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:grid-cols-4">
@@ -203,7 +203,7 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
             <Field label="Accounts" hint="1 = maximum contention">
               {(id) => <Select id={id} value={String(accounts)} onValueChange={(v) => setAccounts(Number(v))} options={numOptions([1, 2, 4, 8, 16])} />}
             </Field>
-            <Field label="Max streams" hint="allocations allowed per account">
+            <Field label="Quota (max active)" hint="allocations allowed per account">
               {(id) => <Select id={id} value={String(maxStreams)} onValueChange={(v) => setMaxStreams(Number(v))} options={numOptions([1, 2, 3])} />}
             </Field>
             <Field label="Race delay" hint="emulated sleep between check and write">
@@ -223,7 +223,7 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
           {formError && <Notice>{formError}</Notice>}
           <RunBar
             progress={series.progress} elapsed={series.elapsed} onRun={run} onStop={series.stop}
-            canRun={!busy && plan.run.length > 0} batchRuns={series.batchRuns} exportName={`stream-limit-${batchId.slice(0, 8)}`}
+            canRun={!busy && plan.run.length > 0} batchRuns={series.batchRuns} exportName={`allocation-limit-${batchId.slice(0, 8)}`}
             runLabel={`Run ${plan.run.length} ${plan.run.length === 1 ? 'strategy' : 'strategies'}`}
           />
           {series.failures.map((f) => <Notice key={f}>{f}</Notice>)}
@@ -333,7 +333,7 @@ export function StrategyBenchmark() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <Segmented label="Experiment" value={kind} onChange={setKind} options={[{ value: 'stream', label: 'Stream limit' }, { value: 'lost', label: 'Lost update' }]} />
+        <Segmented label="Experiment" value={kind} onChange={setKind} options={[{ value: 'stream', label: 'Allocation limit' }, { value: 'lost', label: 'Lost update' }]} />
         <span className={cn('text-xs text-faint')}>One experiment runs at a time.</span>
       </div>
       {/* Both stay mounted so results survive switching. */}

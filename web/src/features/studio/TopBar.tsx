@@ -20,7 +20,7 @@ import { currentIsolation, currentStrategy, setIsolation, setStrategy } from './
 import { ISOLATION_OPTIONS, STRATEGY_OPTIONS } from './nodes';
 import { isActive, useRunStore } from './runStore';
 import { useStudioUi } from './studioUi';
-import type { useRunActions } from './runFlow';
+import { useForeignRun, type useRunActions } from './runFlow';
 
 const update = (fn: Parameters<ReturnType<typeof useDesignStore.getState>['update']>[0]) => useDesignStore.getState().update(fn);
 
@@ -235,6 +235,7 @@ export interface TopBarProps {
 
 export function TopBar({ projectId, name, onRename, problems, checking, onValidate, run }: TopBarProps) {
   const active = useRunStore(isActive);
+  const foreign = useForeignRun(projectId);
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-surface px-3">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -248,11 +249,14 @@ export function TopBar({ projectId, name, onRename, problems, checking, onValida
         <QuickSelectors />
         <span className="h-5 w-px bg-line" />
         <SloChip />
+        {foreign && !active && (
+          <Tooltip content="Only one run can be active at a time. Wait for it to finish, then run this project."><span><Pill tone="amber" data-testid="foreign-run" icon={<Loader size={11} className="ds-spin" />}>Another project is running</Pill></span></Tooltip>
+        )}
         {active ? (
           <Button variant="danger" icon={<Square size={14} />} onClick={() => void run.cancel()} data-testid="stop-run">Stop</Button>
         ) : (
           <SplitButton
-            label="Run" icon={<Play size={14} />} onClick={() => void run.start('LOAD')} menuLabel="Run options"
+            label="Run" icon={<Play size={14} />} disabled={foreign} onClick={() => void run.start('LOAD')} menuLabel="Run options"
             actions={[
               { key: 'load', label: 'Load test', icon: <Play size={14} />, shortcut: 'Ctrl+Enter', onSelect: () => void run.start('LOAD') },
               { key: 'capacity', label: 'Capacity test', icon: <Gauge size={14} />, onSelect: () => void run.start('CAPACITY') },

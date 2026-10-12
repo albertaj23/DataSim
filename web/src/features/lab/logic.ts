@@ -1,5 +1,6 @@
 // Pure helpers for the Concurrency Lab: copy per strategy, aggregation of persisted trials,
 // CSV / Markdown export, and error wording. No React, no DOM (except download()).
+import { OFFLINE_MESSAGE } from '../../lib/api';
 import type {
   Aggregate, ExperimentRun, LostUpdateAggregate, LostUpdateVariant, StrategyName,
 } from '../../lib/labApi';
@@ -29,7 +30,7 @@ export interface StrategyInfo {
   theory: string;
   /** One or two sentences: what it does and what to expect. */
   text: string;
-  /** What the invariant check should show at max streams 1 under contention. */
+  /** What the invariant check should show at quota 1 under contention. */
   expect: 'violations' | 'safe' | 'rare';
 }
 
@@ -56,7 +57,7 @@ export const STRATEGY_INFO: Record<StrategyName, StrategyInfo> = {
   },
   CONSTRAINT: {
     name: 'CONSTRAINT', theory: 'constraint in the schema', expect: 'safe',
-    text: 'A unique index on a generated column allows one active allocation per account; the database rejects the second insert. Only valid for max streams = 1.',
+    text: 'A unique index on a generated column allows one active allocation per account; the database rejects the second insert. Only valid for quota = 1.',
   },
   TRIGGER: {
     name: 'TRIGGER', theory: 'trigger check', expect: 'rare',
@@ -64,7 +65,7 @@ export const STRATEGY_INFO: Record<StrategyName, StrategyInfo> = {
   },
   REDIS_LEASE: {
     name: 'REDIS_LEASE', theory: 'lease · atomic primitive', expect: 'safe',
-    text: 'Redis hands out max-streams slot keys with SET NX PX in one Lua script, so admission is atomic and expires on its own. Needs Redis; two stores can briefly disagree.',
+    text: 'Redis hands out one slot key per unit of quota with SET NX PX in one Lua script, so admission is atomic and expires on its own. Needs Redis; two stores can briefly disagree.',
   },
 };
 
@@ -96,7 +97,7 @@ export interface ResultRow {
   name: string;
   isolation: string;
   trials: number;
-  /** Violations (stream limit) or lost increments (lost update), summed over trials. */
+  /** Violations (allocation limit) or lost increments (lost update), summed over trials. */
   violations: number;
   /** Share of trials with at least one violation, 0..100. */
   violatingPct: number;
@@ -107,6 +108,13 @@ export interface ResultRow {
   p95: number;
   rps: number;
 }
+
+/** Per-trial means: at most one decimal, no trailing zeros (70.2, 0.9, 12). */
+export const fmtMean = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 });
+/** Tooltip text for a per-trial mean: the total it stands for. */
+export const meanTitle = (mean: number, trials: number) => `${fmtMean(mean * trials)} in total over ${trials} ${trials === 1 ? 'trial' : 'trials'}`;
+/** One-line caveat shown under every table that reports per-trial retries and deadlocks. */
+export const MEAN_NOTE = 'Retries and deadlocks are means per trial (hover for totals). Deadlock counts can exceed retries: a deadlocked attempt that exhausts its retries is counted without a retry.';
 
 export const pctOf = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
 
@@ -133,7 +141,7 @@ export const CHART_METRICS: { value: ChartMetric; label: string; unit: string }[
   { value: 'violations', label: 'Violations', unit: '' },
   { value: 'p95', label: 'p95', unit: ' ms' },
   { value: 'rps', label: 'Throughput', unit: ' /s' },
-  { value: 'retries', label: 'Retries', unit: '' },
+  { value: 'retries', label: 'Retries / trial', unit: '' },
 ];
 
 export function metricOf(r: ResultRow, m: ChartMetric): number {
@@ -206,7 +214,7 @@ export function csvCell(v: unknown): string {
 const RAW_COLUMNS: [string, (r: ExperimentRun) => unknown][] = [
   ['run_id', (r) => r.runId], ['created_at', (r) => r.createdAt], ['experiment', (r) => r.experiment], ['strategy', (r) => r.strategy],
   ['isolation', (r) => r.isolationLevel], ['mode', (r) => r.mode], ['concurrency', (r) => r.concurrency], ['accounts', (r) => r.accounts],
-  ['max_streams', (r) => r.maxStreams], ['race_delay_ms', (r) => r.raceDelayMs], ['granted', (r) => r.granted], ['rejected', (r) => r.rejected],
+  ['quota_max_active', (r) => r.maxStreams], ['race_delay_ms', (r) => r.raceDelayMs], ['granted', (r) => r.granted], ['rejected', (r) => r.rejected],
   ['retries', (r) => r.retries], ['deadlocks', (r) => r.deadlocks], ['lock_timeouts', (r) => r.lockTimeouts], ['errors', (r) => r.errors],
   ['violations', (r) => r.violations], ['p50_ms', (r) => r.p50Ms], ['p95_ms', (r) => r.p95Ms], ['throughput_rps', (r) => r.throughputRps],
   ['wall_ms', (r) => r.wallMs], ['batch_id', (r) => r.batchId], ['trial', (r) => r.trial], ['source', (r) => r.source],
@@ -221,7 +229,7 @@ export function trialsToCsv(rows: ExperimentRun[]): string {
 const AGG_COLUMNS: [string, (a: RunAggregate) => unknown][] = [
   ['batch_id', (a) => a.batchId], ['created_at', (a) => a.createdAt], ['experiment', (a) => a.experiment], ['strategy', (a) => a.name],
   ['isolation', (a) => a.isolation], ['trials', (a) => a.trials], ['concurrency', (a) => a.concurrency], ['accounts', (a) => a.accounts],
-  ['max_streams', (a) => a.maxStreams], ['race_delay_ms', (a) => a.raceDelayMs], ['violations_total', (a) => a.violations],
+  ['quota_max_active', (a) => a.maxStreams], ['race_delay_ms', (a) => a.raceDelayMs], ['violations_total', (a) => a.violations],
   ['trials_violating_pct', (a) => a.violatingPct], ['retries_mean', (a) => a.retries], ['deadlocks_mean', (a) => a.deadlocks],
   ['errors_total', (a) => a.errors], ['p50_ms_median', (a) => a.p50], ['p95_ms_median', (a) => a.p95], ['throughput_rps_mean', (a) => a.rps],
 ];
@@ -241,13 +249,13 @@ export function aggregatesToMarkdown(rows: RunAggregate[], title = 'Concurrency 
   ];
   if (rows.length === 0) return [...lines, 'No runs.', ''].join('\n');
   lines.push(
-    '| Batch | Experiment | Strategy | Isolation | Trials | Conc. | Accts | Max streams | Delay ms | Violations | Trials violating | Retries | Deadlocks | Errors | p50 ms | p95 ms | Throughput /s |',
+    '| Batch | Experiment | Strategy | Isolation | Trials | Conc. | Accts | Quota (max active) | Delay ms | Violations | Trials violating | Retries / trial | Deadlocks / trial | Errors | p50 ms | p95 ms | Throughput /s |',
     '|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|',
   );
   for (const a of rows) {
-    lines.push(`| ${mdCell(a.batchId?.slice(0, 8) ?? '-')} | ${a.experiment === 'STREAM_LIMIT' ? 'stream limit' : 'lost update'} | ${mdCell(a.name)} | ${mdCell(a.isolation)} | ${a.trials} | ${a.concurrency} | ${a.accounts} | ${a.maxStreams} | ${a.raceDelayMs} | ${a.violations} | ${a.violatingPct}% | ${a.retries} | ${a.deadlocks} | ${a.errors} | ${a.p50} | ${a.p95} | ${a.rps} |`);
+    lines.push(`| ${mdCell(a.batchId?.slice(0, 8) ?? '-')} | ${a.experiment === 'STREAM_LIMIT' ? 'allocation limit' : 'lost update'} | ${mdCell(a.name)} | ${mdCell(a.isolation)} | ${a.trials} | ${a.concurrency} | ${a.accounts} | ${a.maxStreams} | ${a.raceDelayMs} | ${a.violations} | ${a.violatingPct}% | ${a.retries} | ${a.deadlocks} | ${a.errors} | ${a.p50} | ${a.p95} | ${a.rps} |`);
   }
-  lines.push('', 'Legacy table names: account = user_account, device = client, playback_session = allocation, playback_event = operation_event.', '');
+  lines.push('', 'Legacy table names: account = user_account, device = client, playback_session = allocation, playback_event = operation_event, song = resource.', '');
   return lines.join('\n');
 }
 
@@ -268,7 +276,7 @@ export interface LabFailure { status: number; code?: string; message?: string }
  * get dependency-specific wording because they are the two strategies that need something beyond MySQL tables.
  */
 export function labErrorMessage(f: LabFailure, strategy?: string): string {
-  if (f.status === 0) return 'API is offline.';
+  if (f.status === 0) return OFFLINE_MESSAGE;
   if (f.status === 409) return 'Another experiment is running (UI, CLI bench or test suite). Try again when it finishes.';
   const msg = f.message ?? `Request failed (${f.status})`;
   if (f.status === 400) return msg;
@@ -293,7 +301,7 @@ export function planStrategies(selected: StrategyName[], maxStreams: number, red
   const run: StrategyName[] = [];
   const skipped: { name: StrategyName; reason: string }[] = [];
   for (const s of selected) {
-    if (s === 'CONSTRAINT' && maxStreams > 1) skipped.push({ name: s, reason: 'CONSTRAINT only supports max streams = 1.' });
+    if (s === 'CONSTRAINT' && maxStreams > 1) skipped.push({ name: s, reason: 'CONSTRAINT only supports quota = 1.' });
     else if (s === 'REDIS_LEASE' && !redisUp) skipped.push({ name: s, reason: 'Redis is unreachable, so REDIS_LEASE cannot run. Start it with npm run db:up.' });
     else run.push(s);
   }

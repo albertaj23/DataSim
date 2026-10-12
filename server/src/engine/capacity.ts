@@ -63,12 +63,14 @@ export function capacitySentence(points: CapacityPoint[], fit: CapacityFit | nul
     const atLeast = !next ? 'at least ' : '';
     head = `Sustains ~${fmt(tpsAt)} tps at p95 ≤ ${slo.p95Ms} ms up to ${atLeast}~${Math.round(vusAt)} VUs`;
   }
-  if (!fit || fit.xMax <= 0) return `${head}.`;
-  const r2 = fit.r2.toFixed(2);
-  if (fit.nPeak >= 1e5) {
-    // No coherency term: the curve never turns down. With contention it still saturates at lambda/sigma.
-    const ceiling = fit.sigma > 1e-4 ? fit.lambda / fit.sigma : null;
-    return ceiling !== null ? `${head}; the USL fit has no retrograde region and levels off near ~${fmt(ceiling)} tps (USL, R² ${r2}).` : `${head}; no saturation is visible within the tested load, so the USL fit (R² ${r2}) is still linear.`;
-  }
-  return `${head}; projected peak ~${fmt(fit.xMax)} tps at ~${Math.round(fit.nPeak)} VUs (USL, R² ${r2}).`;
+  if (!fit) return `${head}.`;
+  // Floor, never round up: the card shows 3 decimals, so 0.995 must read 0.99 here rather than 1.00.
+  const r2 = (Math.floor(fit.r2 * 100 + 1e-9) / 100).toFixed(2);
+  if (fit.nPeak !== null && fit.xMax !== null) return `${head}; projected peak ~${fmt(fit.xMax)} tps at ~${Math.round(fit.nPeak)} VUs (USL, R² ${r2}).`;
+  // No retrograde region: with contention the curve still levels off at lambda/sigma (kept only when close to the measurements).
+  if (fit.xMax !== null && fit.sigma > 1e-4) return `${head}; the USL fit has no retrograde region and levels off near ~${fmt(fit.xMax)} tps (USL, R² ${r2}).`;
+  const maxVus = pts[pts.length - 1]!.vus;
+  return a.kneeVus === null
+    ? `${head}; no saturation was observed within the tested load (up to ${maxVus} VUs), so no peak is projected (USL fit R² ${r2}). Test higher VUs to find the limit.`
+    : `${head}; the USL fit (R² ${r2}) does not identify a throughput peak within a credible range, so none is projected.`;
 }

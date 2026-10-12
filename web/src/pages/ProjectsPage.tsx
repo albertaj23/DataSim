@@ -46,7 +46,7 @@ export default function ProjectsPage() {
 
   const load = useCallback(async () => {
     const [p, t] = await Promise.all([api.get<ProjectSummary[]>('/projects'), api.get<TemplateInfo[]>('/templates')]);
-    if (!p.ok || !Array.isArray(p.body)) { setData({ state: 'error', message: p.status === 0 ? 'The API is offline. Start the server (npm run demo), then retry.' : errorMessage(p) }); return; }
+    if (!p.ok || !Array.isArray(p.body)) { setData({ state: 'error', message: errorMessage(p) }); return; }
     setData({ state: 'ready', projects: p.body, templates: t.ok && Array.isArray(t.body) ? t.body : [] });
   }, []);
   useEffect(() => { void load(); }, [load]);

@@ -66,7 +66,7 @@ export function formatDelta(d: Delta, unit: MetricDef['unit'] = 'count'): string
 }
 
 // ---------------------------------------------------------------- labels
-const LETTERS = 'ABCD';
+const LETTERS = 'ABCDE'; // MAX_COMPARE letters
 export const runLetter = (i: number) => LETTERS[i] ?? String(i + 1);
 
 /** "naive · rev 3"; runs that would collide get a short id suffix. Order is preserved. */
@@ -252,6 +252,12 @@ export function diffRuns(a: RunReport, b: RunReport): DiffEntry[] {
 // ---------------------------------------------------------------- selection (Runs page)
 export const MIN_COMPARE = 2;
 export const MAX_COMPARE = 5;
+
+/** Oldest first (run A is the baseline in the usual naive -> fixed demo flow); runs without a start time go last. Stable. */
+export function orderForCompare<T extends { startedAt: string | null }>(runs: T[]): T[] {
+  const t = (r: T) => (r.startedAt ? Date.parse(r.startedAt) : Infinity);
+  return runs.map((r, i) => ({ r, i })).sort((a, b) => t(a.r) - t(b.r) || a.i - b.i).map((x) => x.r);
+}
 
 /** Why the current selection cannot be compared, or null when it can. */
 export function compareBlockReason(sel: { projectId: string; status: string; strategy?: string }[]): string | null {

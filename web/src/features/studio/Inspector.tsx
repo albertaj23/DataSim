@@ -1,8 +1,8 @@
 import { Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MAX_TOTAL_POOL, type DesignNode } from '@datasim/shared';
 import { useDesignStore } from '../../lib/designStore';
-import { Button, FormRow, Input, NumberField, Pill, ProvenanceTag, SectionHeader, Select, Slider } from '../../ui';
+import { Button, FormRow, Input, Label, NumberField, Pill, ProvenanceTag, SectionHeader, Select, Slider } from '../../ui';
 import { DbFitCard } from '../tier2/DbFitCard';
 import { useStudioActions } from './actions';
 import { patchConfig, patchEdge, renameNode, schemaSummary, workloadSummary } from './mutations';
@@ -18,6 +18,18 @@ function Section({ title, tag, children }: { title: string; tag?: 'EMULATED' | '
       <SectionHeader title={title} action={tag ? <ProvenanceTag kind={tag} /> : undefined} />
       {children}
     </section>
+  );
+}
+
+/** Label above a full-width control: for selects whose values do not fit beside a 112 px label (isolation, strategy). */
+function StackRow({ label, hint, children }: { label: string; hint?: ReactNode; children: (id: string) => ReactNode }) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1 py-1">
+      <Label htmlFor={id}>{label}</Label>
+      {children(id)}
+      {hint && <div className="text-xs text-faint">{hint}</div>}
+    </div>
   );
 }
 
@@ -100,7 +112,7 @@ function AppForm({ node }: { node: Extract<DesignNode, { type: 'app' }> }) {
         <FormRow label="Jitter">{(id) => <NumberField id={id} value={c.processingJitterMs} min={0} max={5000} step={0.5} unit="ms" onCommit={(processingJitterMs) => set({ processingJitterMs })} />}</FormRow>
       </Section>
       <Section title="Concurrency control">
-        <FormRow label="Strategy">{(id) => <Select id={id} value={c.strategy} onValueChange={(strategy) => update((d) => { for (const n of d.nodes) if (n.type === 'app') n.config.strategy = strategy; })} options={STRATEGY_OPTIONS} />}</FormRow>
+        <StackRow label="Strategy">{(id) => <Select id={id} value={c.strategy} onValueChange={(strategy) => update((d) => { for (const n of d.nodes) if (n.type === 'app') n.config.strategy = strategy; })} options={STRATEGY_OPTIONS} />}</StackRow>
         <FormRow label="Retries" hint="Deadlock, lock timeout, CAS failure">{(id) => <NumberField id={id} value={c.retry.max} min={0} max={10} unit="max" onCommit={(max) => set({ retry: { ...c.retry, max } })} />}</FormRow>
         <FormRow label="Backoff">{(id) => <NumberField id={id} value={c.retry.backoffMs} min={0} max={5000} unit="ms" onCommit={(backoffMs) => set({ retry: { ...c.retry, backoffMs } })} />}</FormRow>
       </Section>
@@ -111,9 +123,9 @@ function AppForm({ node }: { node: Extract<DesignNode, { type: 'app' }> }) {
 function LbForm({ node }: { node: Extract<DesignNode, { type: 'lb' }> }) {
   return (
     <Section title="Routing" tag="EMULATED">
-      <FormRow label="Algorithm">
+      <StackRow label="Algorithm">
         {(id) => <Select id={id} value={node.config.algorithm} onValueChange={(algorithm) => update((d) => patchConfig(d, node.id, 'lb', { algorithm }))} options={[{ value: 'round-robin', label: 'round-robin' }, { value: 'least-connections', label: 'least-connections' }]} />}
-      </FormRow>
+      </StackRow>
     </Section>
   );
 }

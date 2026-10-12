@@ -158,10 +158,10 @@ export async function loadReport(runId: string): Promise<RunReport | null> {
   let capacity: CapacityResult | null = null;
   if (pts.length || fit[0]) {
     const f = fit[0];
-    const hasFit = !!f && !(num(f.lambda_) === 0 && num(f.x_max) === 0);
+    const hasFit = !!f && num(f.lambda_) > 0;
     capacity = {
       points: pts.map((p): CapacityPoint => ({ stepNo: p.step_no, vus: p.vus, tps: num(p.tps), p50Ms: num(p.p50_ms), p95Ms: num(p.p95_ms), errorRate: num(p.error_rate), runId })),
-      fit: hasFit ? { sigma: f!.sigma, kappa: f!.kappa, lambda: f!.lambda_, nPeak: f!.n_peak, xMax: f!.x_max, r2: f!.r2 } : null,
+      fit: hasFit ? { sigma: f!.sigma, kappa: f!.kappa, lambda: f!.lambda_, nPeak: num(f!.n_peak) > 0 ? num(f!.n_peak) : null, xMax: num(f!.x_max) > 0 ? num(f!.x_max) : null, r2: f!.r2 } : null,
       kneeVus: f?.knee_vus ?? null, sustainedVus: f?.sustained_vus ?? null, sentence: f?.sentence ?? '',
     };
   }

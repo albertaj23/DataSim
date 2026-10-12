@@ -110,6 +110,12 @@ describe('scenario runs', () => {
     const ts = r.samples.map((x) => x.tS);
     expect(ts).toEqual([...ts].sort((a, b) => a - b));
     expect(r.slo).not.toBeNull();
+    // the headline counters, latency and per-transaction table all describe the same (sustained) step
+    const head = (r.settings as { headlineStep: { vus: number }; capacity: { refStepVus: number } });
+    expect(head.headlineStep.vus).toBe(head.capacity.refStepVus);
+    expect(r.txnStats.reduce((x, t) => x + t.count, 0)).toBe(s.txnTotal);
+    expect(r.txnStats.reduce((x, t) => x + t.committed, 0)).toBe(s.committed);
+    expect(r.txnStats.reduce((x, t) => x + t.rejected, 0)).toBe(s.rejected);
     expect(r.findings.some((f) => /knee/i.test(f.title))).toBe(true);
     expect((r.settings as { littlesLaw: unknown[] }).littlesLaw).toHaveLength(3);
     console.log(r.capacity!.sentence, JSON.stringify(r.capacity!.points.map((x) => [x.vus, x.tps, x.p95Ms])));

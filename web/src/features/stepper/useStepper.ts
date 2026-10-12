@@ -45,6 +45,7 @@ export function useStepper(initialScenario: string | null) {
   useStepperRoom<StepperUpdate>((u) => setState((s) => (s ? mergeUpdate(s, u) : s)));
 
   // Initial data: scenario list, and whatever the server already has loaded.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -54,6 +55,7 @@ export function useStepper(initialScenario: string | null) {
       ]);
       if (!alive) return;
       if (!sc.ok || !Array.isArray(sc.body)) { setOffline(true); setError(errorMessage(sc)); return; }
+      setOffline(false); setError(null);
       setScenarios(sc.body);
       const loaded = st.ok ? st.body.scenarioId : null;
       if (loaded) setState(st.body);
@@ -61,7 +63,7 @@ export function useStepper(initialScenario: string | null) {
       setSelectedId(wanted ?? loaded ?? sc.body[0]?.id ?? '');
     })();
     return () => { alive = false; };
-  }, [initialScenario]);
+  }, [initialScenario, attempt]);
 
   const scenarioId = state?.scenarioId ?? null;
   const anyBusy = !!state && (state.txns.T1.busy || state.txns.T2.busy);
@@ -137,5 +139,7 @@ export function useStepper(initialScenario: string | null) {
     setBusy(false);
   }, [post]);
 
-  return { scenarios, selectedId, setSelectedId, state, locks, lastWaits, invariant, busy, error, connected, offline, load, reset, step, kill };
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+
+  return { retry, scenarios, selectedId, setSelectedId, state, locks, lastWaits, invariant, busy, error, connected, offline, load, reset, step, kill };
 }

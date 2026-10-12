@@ -54,7 +54,7 @@ export function capacityCurve(points: CapacityPoint[], fit: CapacityFit | null, 
   let end = maxTested;
   if (fit && maxTested > 0) {
     end = maxTested * 1.5;
-    if (fit.nPeak > maxTested && fit.nPeak <= maxTested * 4) end = Math.max(end, fit.nPeak * 1.25);
+    if (fit.nPeak !== null && fit.nPeak > maxTested && fit.nPeak <= maxTested * 4) end = Math.max(end, fit.nPeak * 1.25);
     end = Math.ceil(end);
     const grid = new Set<number>([1, ...pts.map((p) => p.vus), maxTested]);
     for (let i = 0; i <= samples; i++) grid.add(Math.max(1, Math.round(1 + ((end - 1) * i) / samples)));
@@ -70,7 +70,7 @@ export function capacityCurve(points: CapacityPoint[], fit: CapacityFit | null, 
 }
 
 /** Peak N* is only drawn when the fit has a retrograde region that is not absurdly far away. */
-export const hasFinitePeak = (fit: CapacityFit | null, maxTested: number): fit is CapacityFit => !!fit && fit.nPeak < 1e5 && fit.nPeak > 0 && fit.nPeak <= Math.max(maxTested * 6, 10);
+export const hasFinitePeak = (fit: CapacityFit | null, maxTested: number): fit is CapacityFit & { nPeak: number } => !!fit && fit.nPeak !== null && fit.nPeak < 1e5 && fit.nPeak > 0 && fit.nPeak <= Math.max(maxTested * 6, 10);
 
 export interface LittleCheck { vus: number; predicted: number; ratio: number }
 export function littlesLaw(settings: Record<string, unknown>): LittleCheck[] {
@@ -156,6 +156,16 @@ export function explainTables(explain: unknown): ExplainTable[] {
 export const isFullScan = (t: ExplainTable) => t.access === 'ALL';
 
 // ---------------------------------------------------------------- findings
+const RATIO_KEY = /share|ratio|hit|fraction|pct|percent|utili[sz]ation|errorRate/i;
+const R2_KEY = /^(r2|rSquared)$/i;
+
+/** One evidence number: R^2 at 2 decimals, shares / ratios / hit rates in 0..1 as percentages (0.995 -> 99.5%), else up to 3 decimals. */
+export function evidenceNumber(key: string, v: number): string {
+  if (R2_KEY.test(key)) return v.toFixed(2);
+  if (!Number.isInteger(v) && RATIO_KEY.test(key) && v >= 0 && v <= 1) return `${Number((v * 100).toFixed(1))}%`;
+  return Number.isInteger(v) ? formatNumber(v) : String(Number(v.toFixed(3)));
+}
+
 /** Evidence entries worth showing as chips: short primitives and short flat lists; drops SQL text and nested objects. */
 export function evidenceChips(evidence: Record<string, unknown>): { label: string; value: string }[] {
   const skip = new Set(['statement', 'digest', 'digestText', 'points', 'fit', 'littlesLaw']);
@@ -163,7 +173,7 @@ export function evidenceChips(evidence: Record<string, unknown>): { label: strin
   for (const [k, v] of Object.entries(evidence)) {
     if (skip.has(k) || v == null) continue;
     let s: string | null = null;
-    if (typeof v === 'number') s = Number.isInteger(v) ? formatNumber(v) : String(Number(v.toFixed(3)));
+    if (typeof v === 'number') s = evidenceNumber(k, v);
     else if (typeof v === 'string') s = v;
     else if (typeof v === 'boolean') s = v ? 'yes' : 'no';
     else if (Array.isArray(v) && v.every((x) => typeof x === 'string' || typeof x === 'number')) s = v.join(', ');

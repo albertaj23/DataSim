@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 import fs from 'node:fs';
-export const BASE='http://localhost:5174/DataSim/';
+export const BASE='http://localhost:5180/DataSim/';
 export const API='http://127.0.0.1:4000/api';
 export const SC='c:/Users/visha/OneDrive/Desktop/Documents/programming/DataSim/.datasim-v2/review/screens/';
 export async function launch(opts={}){

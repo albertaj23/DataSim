@@ -1,12 +1,16 @@
-import { ArrowRight, Check, CircleCheck, CircleX, Wrench } from 'lucide-react';
+import { ArrowRight, CircleCheck, CircleX } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import type { Finding, InvariantResult, RunReport, Severity, StatementStat, TxnStat } from '@datasim/shared';
+import type { Finding, FindingFix, InvariantResult, RunReport, StatementStat, TxnStat } from '@datasim/shared';
 import { api, errorMessage } from '../../../lib/api';
-import { useDesignStore } from '../../../lib/designStore';
 import { formatMs, formatNumber } from '../../../lib/format';
-import { Button, Dialog, EmptyState, Pill, ProvenanceTag, TBody, TD, TH, THead, TR, Table, useToast, type Tone } from '../../../ui';
+import { Button, Dialog, EmptyState, Pill, ProvenanceTag, TBody, TD, TH, THead, TR, Table, useToast } from '../../../ui';
 import { TimeBar, TimeLegend } from '../../charts';
+import { useReportActions } from '../../report/actions';
+import { FindingCard } from '../../report/FindingsSection';
+import { aggregateLockWaits, rerunKind } from '../../report/logic';
+import { LockAggTable, WaitGraph } from '../../report/LockWaits';
 import { loadDesign, flushSave } from '../persist';
+import { useRunActions } from '../runFlow';
 import { isActive, useRunStore, type LogEntry } from '../runStore';
 
 /** Shared empty state for tabs that need a finished run. */
@@ -108,6 +112,7 @@ export function StatementsTab({ report }: { report: RunReport | null }) {
 export function LocksTab({ report }: { report: RunReport | null }) {
   const live = useRunStore((s) => s.locks);
   const active = useRunStore(isActive);
+  const agg = useMemo(() => aggregateLockWaits(report?.lockWaits ?? []), [report]);
   if (active) {
     return (
       <Scroll>
@@ -128,25 +133,15 @@ export function LocksTab({ report }: { report: RunReport | null }) {
   if (!report) return <NoReport what="Lock waits" />;
   return (
     <Scroll>
-      <div className="mb-2 flex items-center gap-2 text-xs text-muted">Lock waits observed <ProvenanceTag kind="MEASURED" /><span className="text-faint">first sighting of each waiter, blocker and lock</span></div>
+      <div className="mb-2 flex items-center gap-2 text-xs text-muted">Lock waits observed <ProvenanceTag kind="MEASURED" /><span className="text-faint">{formatNumber(report.lockWaits.length)} sampled waits, grouped by waiter, blocker and lock</span></div>
       {report.lockWaits.length === 0 ? <p className="py-6 text-center text-sm text-muted">No lock waits were observed during the measured window.</p> : (
-        <Table>
-          <THead><TR><TH align="right">At</TH><TH>Waiting</TH><TH /><TH>Blocking</TH><TH>Table</TH><TH>Index</TH><TH>Mode</TH><TH>Lock data</TH></TR></THead>
-          <TBody>
-            {report.lockWaits.map((w) => (
-              <TR key={w.seq}>
-                <TD align="right" mono className="text-muted">{formatMs(w.atMs)}</TD>
-                <TD mono>{w.waitingTxn}</TD>
-                <TD><ArrowRight size={12} className="text-faint" /></TD>
-                <TD mono className="text-warn">{w.blockingTxn}</TD>
-                <TD mono>{w.tableName}</TD>
-                <TD mono className="text-muted">{w.indexName ?? NA}</TD>
-                <TD mono className="text-muted">{w.lockMode}</TD>
-                <TD mono className="max-w-[200px] truncate text-muted" title={w.lockData ?? undefined}>{w.lockData ?? NA}</TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+          <div className="rounded-lg border border-line bg-surface p-3">
+            <div className="mb-1 text-xs text-muted">Wait-for graph &middot; arrow = waits for</div>
+            <WaitGraph rows={report.lockWaits} />
+          </div>
+          <LockAggTable agg={agg} />
+        </div>
       )}
     </Scroll>
   );
@@ -178,76 +173,52 @@ export function InvariantsTab({ report }: { report: RunReport | null }) {
 }
 
 // ---------------------------------------------------------------- findings
-const SEV_TONE: Record<Severity, Tone> = { HIGH: 'red', MEDIUM: 'amber', LOW: 'blue', INFO: 'neutral' };
-
-/** Scalars and short string lists only; nested objects are noise in a pill (null = skip). */
-function evidenceText(v: unknown): string | null {
-  if (typeof v === 'number') return Number.isInteger(v) ? formatNumber(v) : String(Number(v.toFixed(2)));
-  if (typeof v === 'string' || typeof v === 'boolean') return String(v);
-  if (Array.isArray(v) && v.length <= 4 && v.every((x) => typeof x === 'string' || typeof x === 'number')) return v.join(', ');
-  return null;
+/** Same finding cards as the report page; the fix is applied to the draft here and the canvas reloads it. */
+export function FindingsTab({ report }: { report: RunReport | null }) {
+  return report ? <FindingsBody report={report} /> : <NoReport what="Advisor findings" />;
 }
 
-export function FindingsTab({ report }: { report: RunReport | null }) {
+function FindingsBody({ report }: { report: RunReport }) {
   const toast = useToast();
-  const projectId = useDesignStore((s) => s.projectId);
-  const [busy, setBusy] = useState<number | null>(null);
+  const projectId = report.run.projectId;
+  const base = useReportActions(report);
+  const run = useRunActions(projectId);
   const [applied, setApplied] = useState<Record<string, number>>({});
-  if (!report) return <NoReport what="Advisor findings" />;
+  const [showInfo, setShowInfo] = useState(false);
   const runId = report.run.runId;
 
-  const apply = async (f: Finding) => {
-    if (!f.fix || !projectId) return;
-    setBusy(f.findingNo);
-    try {
-      if (!(await flushSave())) { toast.error('Could not save the draft first'); return; }
-      const res = await api.post<{ revisionNo: number }>(`/projects/${projectId}/apply-fix`, { fix: f.fix, note: f.fixLabel ?? f.title });
-      if (!res.ok) { toast.error('Could not apply the fix', errorMessage(res)); return; }
-      const rev = await api.get<{ revisionNo: number; design: RunReport['design'] }>(`/projects/${projectId}/revisions/${res.body.revisionNo}`);
-      if (!rev.ok) { toast.error('Fix applied, but the revision could not be reloaded', errorMessage(rev)); return; }
-      loadDesign(projectId, rev.body.design, res.body.revisionNo);
-      setApplied((a) => ({ ...a, [`${runId}:${f.findingNo}`]: res.body.revisionNo }));
-      toast.success(`Applied: ${f.fixLabel ?? f.title}`, `rev ${res.body.revisionNo}. Run again to see the effect.`);
-    } finally { setBusy(null); }
+  const actions = {
+    busy: base.busy,
+    applyFix: async (fix: FindingFix, label: string) => {
+      if (!(await flushSave())) { toast.error('Could not save the draft first'); return null; }
+      const rev = await base.applyFix(fix, label);
+      if (rev === null) return null;
+      const res = await api.get<{ revisionNo: number; design: RunReport['design'] }>(`/projects/${projectId}/revisions/${rev}`);
+      if (res.ok) loadDesign(projectId, res.body.design, rev);
+      else toast.error('Fix applied, but the revision could not be reloaded', errorMessage(res));
+      return rev;
+    },
+    rerun: async () => { await run.start(rerunKind(report)); return true; },
   };
+  const main = report.findings.filter((f) => f.severity !== 'INFO');
+  const info = report.findings.filter((f) => f.severity === 'INFO');
+  const card = (f: Finding) => (
+    <FindingCard key={f.findingNo} f={f} projectId={projectId} inStudio actions={actions} applied={applied[`${runId}:${f.findingNo}`]} onApplied={(rev) => setApplied((a) => ({ ...a, [`${runId}:${f.findingNo}`]: rev }))} />
+  );
 
   return (
     <Scroll>
       {report.findings.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted">The advisor found nothing to flag in this run.</p>
       ) : (
-        <ul className="grid gap-2 lg:grid-cols-2">
-          {report.findings.map((f) => {
-            const rev = applied[`${runId}:${f.findingNo}`];
-            const evidence = Object.entries(f.evidence ?? {}).filter(([, v]) => evidenceText(v) !== null).slice(0, 8) as [string, unknown][];
-            return (
-              <li key={f.findingNo} className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
-                <div className="flex items-start gap-2">
-                  <Pill tone={SEV_TONE[f.severity]} className="mt-px font-medium">{f.severity.toLowerCase()}</Pill>
-                  <h4 className="min-w-0 flex-1 text-sm font-medium text-fg">{f.title}</h4>
-                </div>
-                <p className="text-xs leading-[18px] text-muted">{f.explanation}</p>
-                {evidence.length > 0 && (
-                  <dl className="flex flex-wrap gap-1.5">
-                    {evidence.map(([k, v]) => (
-                      <div key={k} className="flex max-w-full items-center gap-1 rounded-md border border-line bg-surface px-1.5 py-0.5 font-mono text-[11px]">
-                        <dt className="text-faint">{k}</dt><dd className="truncate text-fg" title={evidenceText(v) ?? ''}>{evidenceText(v)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-                {f.fix && (
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                    <span className="text-xs text-faint">{f.fixLabel}</span>
-                    {rev ? <Pill tone="green" icon={<Check size={11} />}>applied &middot; rev {rev}</Pill> : (
-                      <Button size="sm" variant="primary" icon={<Wrench size={14} />} loading={busy === f.findingNo} onClick={() => void apply(f)} data-testid="apply-fix">Apply fix</Button>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="overflow-hidden rounded-lg border border-line bg-surface" data-testid="findings-list">
+          <div className="divide-y divide-line">{(showInfo ? [...main, ...info] : main).map(card)}</div>
+          {info.length > 0 && (
+            <div className="border-t border-line px-3 py-1.5">
+              <Button size="sm" variant="ghost" onClick={() => setShowInfo((v) => !v)}>{showInfo ? 'Hide informational findings' : `Show ${info.length} informational finding${info.length === 1 ? '' : 's'}`}</Button>
+            </div>
+          )}
+        </div>
       )}
     </Scroll>
   );

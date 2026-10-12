@@ -18,7 +18,7 @@ describe('fitUsl', () => {
     expect(fit.kappa).toBeCloseTo(truth.kappa, 5);
     expect(fit.r2).toBeGreaterThan(0.9999);
     expect(fit.nPeak).toBeCloseTo(Math.sqrt((1 - truth.sigma) / truth.kappa), 0);
-    expect(fit.xMax).toBeCloseTo(uslThroughput(fit.nPeak, truth), 0);
+    expect(fit.xMax).toBeCloseTo(uslThroughput(fit.nPeak!, truth), 0);
   });
 
   it('fits the default capacity steps and tolerates noise', () => {
@@ -35,7 +35,22 @@ describe('fitUsl', () => {
     const fit = fitUsl([1, 2, 4, 8].map((n) => ({ n, x: 50 * n })))!;
     expect(fit.sigma).toBeLessThan(1e-3);
     expect(fit.kappa).toBeLessThan(1e-6);
-    expect(fit.nPeak).toBeGreaterThanOrEqual(1e5);
+    expect(fit.nPeak).toBeNull();
+    expect(fit.xMax).toBeNull();
+  });
+
+  it('reports no peak for the near-linear data behind the "79,000 tps at 20,237 VUs" claim', () => {
+    const fit = fitUsl([10, 25, 50, 100, 200].map((n, i) => ({ n, x: 7.8 * n * [1.0, 0.99, 1.01, 1.0, 0.995][i]! })))!;
+    expect(fit.nPeak).toBeNull();
+    expect(fit.xMax).toBeNull();
+    expect(fit.r2).toBeGreaterThan(0.99);
+  });
+
+  it('keeps a contention ceiling close to the measurements but no peak', () => {
+    const fit = fitUsl([1, 2, 4, 8, 16, 32].map((n) => ({ n, x: uslThroughput(n, { lambda: 100, sigma: 0.05, kappa: 0 }) })))!;
+    expect(fit.nPeak).toBeNull();
+    expect(fit.xMax).toBeGreaterThan(1500);
+    expect(fit.xMax).toBeLessThan(2100);
   });
 
   it('returns null with fewer than two points', () => {
@@ -54,6 +69,16 @@ describe('capacity analysis', () => {
     expect(a.sloBrokenAt).toBe(200);
     expect(a.sustainedVus).toBe(100);
     expect(capacitySentence(pts, { lambda: 12, sigma: 0.03, kappa: 0.0001, nPeak: 98, xMax: 500, r2: 0.97 }, slo, a)).toMatch(/^Sustains ~[\d,]+ tps at p95 ≤ 200 ms up to ~\d+ VUs; projected peak ~[\d,]+ tps at ~\d+ VUs \(USL, R² 0\.97\)\.$/);
+  });
+
+  it('says no saturation was observed instead of projecting a peak, and floors R² to match the 3-decimal card', () => {
+    const pts = [pt(1, 10, 160, 20), pt(2, 25, 400, 25), pt(3, 50, 800, 40), pt(4, 100, 1560, 60), pt(5, 200, 1560, 80)];
+    const a = analyzeSteps(pts, slo);
+    const s = capacitySentence(pts, { lambda: 7.8, sigma: 2e-18, kappa: 1e-9, nPeak: null, xMax: null, r2: 0.9954 }, slo, a);
+    expect(s).toContain('no saturation was observed within the tested load (up to 200 VUs)');
+    expect(s).toContain('Test higher VUs');
+    expect(s).toContain('R² 0.99');
+    expect(s).not.toMatch(/projected peak/);
   });
 
   it('breaks at the first step when the SLO is already violated', () => {

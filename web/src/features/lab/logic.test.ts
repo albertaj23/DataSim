@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ExperimentRun } from '../../lib/labApi';
 import {
-  aggregateRuns, aggregatesToCsv, aggregatesToMarkdown, csvCell, labErrorMessage, median, planStrategies, reviewName,
+  aggregateRuns, aggregatesToCsv, aggregatesToMarkdown, csvCell, fmtMean, labErrorMessage, meanTitle, median, planStrategies, reviewName,
   trialsToCsv, validateStreamParams,
 } from './logic';
 
@@ -95,5 +95,22 @@ describe('lab logic', () => {
     expect(labErrorMessage({ status: 500, message: 'boom' }, 'TRIGGER')).toMatch(/CREATE TRIGGER/);
     expect(labErrorMessage({ status: 400, message: 'bad' }, 'REDIS_LEASE')).toBe('bad');
     expect(labErrorMessage({ status: 0 })).toMatch(/offline/);
+  });
+
+  it('fmtMean keeps at most one decimal and drops trailing zeros', () => {
+    expect(fmtMean(70.2)).toBe('70.2');
+    expect(fmtMean(0.9)).toBe('0.9');
+    expect(fmtMean(12)).toBe('12');
+    expect(fmtMean(3.04)).toBe('3');
+    expect(fmtMean(1234.56)).toBe('1,234.6');
+    expect(meanTitle(70.2, 10)).toBe('702 in total over 10 trials');
+    expect(meanTitle(1, 1)).toBe('1 in total over 1 trial');
+  });
+
+  it('uses quota wording, not stream wording, in exports', () => {
+    const csv = aggregatesToCsv(aggregateRuns([run({})]));
+    expect(csv).toContain('quota_max_active');
+    expect(aggregatesToMarkdown(aggregateRuns([run({})]))).toContain('Quota (max active)');
+    expect(aggregatesToMarkdown(aggregateRuns([run({})]))).not.toMatch(/stream/i);
   });
 });

@@ -9,8 +9,9 @@ import { Panel, Section } from './Section';
 
 const TONE: Record<Severity, Tone> = { HIGH: 'red', MEDIUM: 'amber', LOW: 'blue', INFO: 'neutral' };
 
-function FindingCard({ f, report, applied, onApplied, actions }: {
-  f: Finding; report: RunReport; applied: number | undefined; onApplied: (rev: number) => void; actions: ReturnType<typeof useReportActions>;
+/** One advisor finding with evidence chips and the fix button. Shared by the report page and the Studio findings tab (`inStudio` drops the "Open in Studio" link). */
+export function FindingCard({ f, projectId, applied, onApplied, actions, inStudio }: {
+  f: Finding; projectId: string; applied: number | undefined; onApplied: (rev: number) => void; actions: Pick<ReturnType<typeof useReportActions>, 'applyFix' | 'rerun' | 'busy'>; inStudio?: boolean;
 }) {
   const [showSql, setShowSql] = useState(false);
   const chips = evidenceChips(f.evidence);
@@ -51,7 +52,7 @@ function FindingCard({ f, report, applied, onApplied, actions }: {
             <>
               <span className="inline-flex items-center gap-1.5 text-xs text-ok"><CircleCheck size={14} />Applied · rev {applied}</span>
               <Button size="sm" variant="secondary" icon={<Play size={14} />} loading={actions.busy === 'rerun'} disabled={actions.busy !== null} onClick={() => void actions.rerun(f.fix)}>Re-run</Button>
-              <Link to={`/p/${report.run.projectId}`} className={buttonClass('ghost', 'sm')}><ExternalLink size={14} />Open in Studio</Link>
+              {!inStudio && <Link to={`/p/${projectId}`} className={buttonClass('ghost', 'sm')}><ExternalLink size={14} />Open in Studio</Link>}
             </>
           )}
         </div>
@@ -68,7 +69,7 @@ export function FindingsSection({ report }: { report: RunReport }) {
   const main = report.findings.filter((f) => f.severity !== 'INFO');
   const info = report.findings.filter((f) => f.severity === 'INFO');
   const shown = showInfo ? [...main, ...info] : main;
-  const card = (f: Finding) => <FindingCard key={f.findingNo} f={f} report={report} applied={applied[f.findingNo]} onApplied={(rev) => setApplied((a) => ({ ...a, [f.findingNo]: rev }))} actions={actions} />;
+  const card = (f: Finding) => <FindingCard key={f.findingNo} f={f} projectId={report.run.projectId} applied={applied[f.findingNo]} onApplied={(rev) => setApplied((a) => ({ ...a, [f.findingNo]: rev }))} actions={actions} />;
   return (
     <Section id="findings" title="Findings" aside={report.findings.length ? `${main.length} to review · ${info.length} informational` : undefined}>
       {report.findings.length === 0 ? (

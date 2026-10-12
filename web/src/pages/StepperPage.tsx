@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Pill, StatusDot, Tooltip } from '../ui';
+import { RefreshCw, ServerOff } from 'lucide-react';
+import { Button, EmptyState, Pill, StatusDot, Tooltip, cn } from '../ui';
 import { PageContainer, PageHeader } from '../shell/Page';
 import { LegacyNames, Notice } from '../features/lab/widgets';
 import { LockTable } from '../features/stepper/LockTable';
@@ -16,7 +17,10 @@ export default function StepperPage() {
   const [params] = useSearchParams();
   const s = useStepper(params.get('scenario'));
   const { state, selectedId, scenarios } = s;
-  const scenario = scenarios.find((x) => x.id === (state?.scenarioId ?? selectedId));
+  // The dropdown drives what is described; the loaded session drives the step controls.
+  const scenario = scenarios.find((x) => x.id === selectedId);
+  const loadedScenario = scenarios.find((x) => x.id === state?.scenarioId);
+  const stale = !!state?.scenarioId && state.scenarioId !== selectedId;
   const dead = deadlockInfo(state);
   const [showText, setShowText] = useState(false);
   const loadedMatches = !!state?.scenarioId && state.scenarioId === selectedId;
@@ -35,6 +39,7 @@ export default function StepperPage() {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.getAttribute('role') === 'combobox')) return;
       if (!state?.scenarioId) return;
+      if (stale && e.key.toLowerCase() !== 'r') return;
       const k = e.key.toLowerCase();
       if (k === '1' || k === '2') {
         const label = k === '1' ? 'T1' : 'T2';
@@ -45,7 +50,7 @@ export default function StepperPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [state, s, runNext]);
+  }, [state, s, runNext, stale]);
 
   const live = (
     <Tooltip content={s.connected ? 'Step results arrive over Socket.IO' : 'Socket disconnected: polling the server every second'}>
@@ -61,7 +66,9 @@ export default function StepperPage() {
         actions={live}
       />
       <div className="flex flex-col gap-4">
-        {s.error && <Notice>{s.error}</Notice>}
+        {s.offline && !s.scenarios.length ? (
+          <EmptyState icon={<ServerOff size={20} />} title="Could not load the scenarios" description={s.error ?? undefined} actions={<Button icon={<RefreshCw size={14} />} onClick={s.retry}>Retry</Button>} />
+        ) : s.error && <Notice>{s.error}</Notice>}
         {s.offline && !s.scenarios.length ? null : (
           <ScenarioPanel
             scenarios={s.scenarios} selectedId={s.selectedId} onSelect={s.setSelectedId} scenario={scenario} state={state}
@@ -69,12 +76,20 @@ export default function StepperPage() {
           />
         )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        {stale && (
+          <p className="text-xs text-warn" role="status">
+            The steps below belong to the loaded scenario{loadedScenario ? ` "${loadedScenario.title}"` : ''}. Choose Load scenario to replace them with "{scenario?.title}".
+          </p>
+        )}
+        <p className="text-xs text-faint" data-testid="review1-names">
+          Review 1 names (the SQL is shown as the server runs it): <span className="font-mono">playback_session</span> = allocation · <span className="font-mono">device_id</span> = client · <span className="font-mono">song_id</span> = resource · <span className="font-mono">'PLAYING'</span> = active · <span className="font-mono">max_streams</span> = quota · <span className="font-mono">account</span> = user_account
+        </p>
+        <div className={cn('grid gap-4 lg:grid-cols-2', stale && 'pointer-events-none opacity-40')} aria-disabled={stale || undefined}>
           {(['T1', 'T2'] as const).map((label) => (
             <TxnColumn
               key={label}
               txn={state?.txns[label] ?? { label, connId: null, isolation: null, killed: false, busy: false, steps: [], cursor: 0 }}
-              pageBusy={s.busy}
+              pageBusy={s.busy || stale}
               onRun={() => void s.step(label)}
               onKill={() => void s.kill(label)}
               shortcut={label === 'T1' ? '1' : '2'}

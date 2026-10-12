@@ -4,8 +4,8 @@ import { api, errorMessage } from '../../lib/api';
 import type { ExperimentRun } from '../../lib/labApi';
 import { formatMs, formatNumber, relativeTime, shortId } from '../../lib/format';
 import { Button, EmptyState, Pill, ProvenanceTag, Select, Skeleton, Table, TBody, TD, TH, THead, TR, cn } from '../../ui';
-import { aggregateRuns, aggregatesToCsv, aggregatesToMarkdown, downloadText, trialsToCsv } from './logic';
-import { Notice, Panel, Segmented } from './widgets';
+import { MEAN_NOTE, aggregateRuns, aggregatesToCsv, aggregatesToMarkdown, downloadText, fmtMean, meanTitle, trialsToCsv } from './logic';
+import { Notice, Panel, Segmented, TableNote } from './widgets';
 
 type ExpFilter = 'all' | ExperimentRun['experiment'];
 type View = 'summary' | 'trials';
@@ -45,7 +45,7 @@ export function History() {
       bodyClassName="flex flex-col gap-3"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Segmented<ExpFilter> label="Experiment" value={exp} onChange={setExp} options={[{ value: 'all', label: 'All' }, { value: 'STREAM_LIMIT', label: 'Stream limit' }, { value: 'LOST_UPDATE', label: 'Lost update' }]} />
+        <Segmented<ExpFilter> label="Experiment" value={exp} onChange={setExp} options={[{ value: 'all', label: 'All' }, { value: 'STREAM_LIMIT', label: 'Allocation limit' }, { value: 'LOST_UPDATE', label: 'Lost update' }]} />
         <div className="w-56"><Select size="sm" aria-label="Strategy filter" value={strategy} onValueChange={setStrategy} mono options={strategies.map((s) => ({ value: s, label: s === 'all' ? 'All strategies' : s }))} /></div>
         <Segmented<View> label="View" value={view} onChange={setView} options={[{ value: 'summary', label: 'Per strategy' }, { value: 'trials', label: 'Every trial' }]} />
         <div className="ml-auto flex items-center gap-2">
@@ -57,7 +57,10 @@ export function History() {
         </div>
       </div>
 
-      {error && <Notice>{error}</Notice>}
+      {error && rows === null && (
+        <EmptyState title="Could not load the history" description={error} actions={<Button icon={<RefreshCw size={14} />} loading={loading} onClick={() => void load()}>Retry</Button>} />
+      )}
+      {error && rows !== null && <Notice>{error}</Notice>}
 
       {rows === null && !error && (
         <div className="flex flex-col gap-1.5" aria-busy="true"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
@@ -72,9 +75,12 @@ export function History() {
       )}
 
       {filtered.length > 0 && (
-        <div className="max-h-[560px] overflow-auto rounded-lg border border-line [&>div]:overflow-visible [&>div]:border-0">
-          {view === 'summary' ? <SummaryTable aggs={aggs} /> : <TrialsTable rows={filtered} />}
-        </div>
+        <>
+          <div className="max-h-[560px] overflow-auto rounded-lg border border-line pb-2 [&>div]:overflow-visible [&>div]:border-0">
+            {view === 'summary' ? <SummaryTable aggs={aggs} /> : <TrialsTable rows={filtered} />}
+          </div>
+          {view === 'summary' && <TableNote>{MEAN_NOTE}</TableNote>}
+        </>
       )}
     </Panel>
   );
@@ -86,26 +92,26 @@ function SummaryTable({ aggs }: { aggs: ReturnType<typeof aggregateRuns> }) {
       <THead>
         <tr>
           <TH>When</TH><TH>Experiment</TH><TH>Strategy</TH><TH>Isolation</TH><TH align="right">Trials</TH>
-          <TH>Params</TH><TH align="right">Violations</TH><TH align="right">Retries</TH><TH align="right">Deadlocks</TH><TH align="right">p50</TH><TH align="right">p95</TH><TH align="right">Throughput</TH><TH>Batch</TH>
+          <TH>Params</TH><TH align="right">Violations</TH><TH align="right">Retries / trial</TH><TH align="right">Deadlocks / trial</TH><TH align="right">p50</TH><TH align="right">p95</TH><TH align="right">Throughput</TH><TH>Batch</TH>
         </tr>
       </THead>
       <TBody>
         {aggs.map((a) => (
           <TR key={a.key}>
             <TD className="whitespace-nowrap text-xs text-muted" title={a.createdAt}>{relativeTime(a.createdAt)}</TD>
-            <TD><Pill>{a.experiment === 'STREAM_LIMIT' ? 'stream limit' : 'lost update'}</Pill></TD>
+            <TD><Pill>{a.experiment === 'STREAM_LIMIT' ? 'allocation limit' : 'lost update'}</Pill></TD>
             <TD mono className="font-medium">{a.name}</TD>
             <TD className="whitespace-nowrap text-xs text-muted">{a.isolation}</TD>
             <TD align="right" mono>{a.trials}</TD>
             <TD mono className="whitespace-nowrap text-xs text-muted">
-              {a.experiment === 'STREAM_LIMIT' ? `${a.concurrency}c · ${a.accounts}a · ${a.maxStreams}s · ${a.raceDelayMs}ms` : `${a.concurrency}w · ${a.raceDelayMs}ms`}
+              {a.experiment === 'STREAM_LIMIT' ? `${a.concurrency}c · ${a.accounts}a · quota ${a.maxStreams} · ${a.raceDelayMs}ms` : `${a.concurrency}w · ${a.raceDelayMs}ms`}
             </TD>
             <TD align="right" mono className={cn(a.violations > 0 ? 'font-medium text-bad' : 'text-ok')}>{formatNumber(a.violations)}</TD>
-            <TD align="right" mono>{formatNumber(a.retries, Number.isInteger(a.retries) ? 0 : 2)}</TD>
-            <TD align="right" mono>{formatNumber(a.deadlocks, Number.isInteger(a.deadlocks) ? 0 : 2)}</TD>
-            <TD align="right" mono>{formatMs(a.p50)}</TD>
-            <TD align="right" mono>{formatMs(a.p95)}</TD>
-            <TD align="right" mono>{formatNumber(a.rps, 1)}/s</TD>
+            <TD align="right" mono title={meanTitle(a.retries, a.trials)}>{fmtMean(a.retries)}</TD>
+            <TD align="right" mono title={meanTitle(a.deadlocks, a.trials)}>{fmtMean(a.deadlocks)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(a.p50)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(a.p95)}</TD>
+            <TD align="right" mono>{fmtMean(a.rps)}/s</TD>
             <TD mono className="text-xs text-faint">{shortId(a.batchId)}</TD>
           </TR>
         ))}
@@ -133,11 +139,11 @@ function TrialsTable({ rows }: { rows: ExperimentRun[] }) {
             <TD align="right" mono>{r.granted}</TD>
             <TD align="right" mono>{r.rejected}</TD>
             <TD align="right" mono className={cn(r.violations > 0 ? 'font-medium text-bad' : 'text-ok')}>{r.violations}</TD>
-            <TD align="right" mono>{r.retries}</TD>
-            <TD align="right" mono>{r.deadlocks}</TD>
+            <TD align="right" mono>{Math.round(r.retries)}</TD>
+            <TD align="right" mono>{Math.round(r.deadlocks)}</TD>
             <TD align="right" mono className={cn(r.errors > 0 && 'text-bad')}>{r.errors}</TD>
-            <TD align="right" mono>{formatMs(r.p50Ms)}</TD>
-            <TD align="right" mono>{formatMs(r.p95Ms)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(r.p50Ms)}</TD>
+            <TD align="right" mono className="whitespace-nowrap">{formatMs(r.p95Ms)}</TD>
             <TD className="text-xs text-muted">{r.source}</TD>
           </TR>
         ))}

@@ -2,14 +2,14 @@ import { Activity, GitCompare, RefreshCw, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { isTerminal, type ProjectSummary, type RunKind, type RunStatus, type RunSummary } from '@datasim/shared';
-import { MAX_COMPARE, compareBlockReason } from '../features/compare/diff';
+import { MAX_COMPARE, compareBlockReason, orderForCompare } from '../features/compare/diff';
 import { api, errorMessage } from '../lib/api';
 import { formatMs, formatNumber, relativeTime, shortId } from '../lib/format';
 import { PageContainer, PageHeader } from '../shell/Page';
 import { Button, EmptyState, Pill, Select, Skeleton, StatusDot, TBody, TD, TH, THead, TR, Table, Tooltip, buttonClass, type StatusKind, type Tone } from '../ui';
 
 const ISO: Record<string, string> = { 'READ UNCOMMITTED': 'RU', 'READ COMMITTED': 'RC', 'REPEATABLE READ': 'RR', SERIALIZABLE: 'SER' };
-const KIND_OPTIONS = [{ value: 'all', label: 'All kinds' }, { value: 'LOAD', label: 'Load' }, { value: 'CAPACITY', label: 'Capacity' }, { value: 'STRATEGY_CHILD', label: 'Strategy child' }];
+const KIND_OPTIONS = [{ value: 'all', label: 'All kinds' }, { value: 'LOAD', label: 'Load' }, { value: 'CAPACITY', label: 'Capacity' }, { value: 'STRATEGY_CHILD', label: 'Compare (strategy runs)' }];
 const VERDICT_OPTIONS = [{ value: 'all', label: 'Any verdict' }, { value: 'pass', label: 'Pass' }, { value: 'fail', label: 'Fail' }];
 const STATUS_DOT: Record<RunStatus, { dot: StatusKind; pulse?: boolean }> = {
   QUEUED: { dot: 'info', pulse: true }, PROVISIONING: { dot: 'info', pulse: true }, WARMING: { dot: 'info', pulse: true }, RUNNING: { dot: 'info', pulse: true }, ANALYZING: { dot: 'info', pulse: true },
@@ -65,12 +65,14 @@ export default function RunsPage() {
   const chosen = selected.map((id) => byId.get(id)).filter((r): r is RunSummary => !!r);
   const block = compareBlockReason(chosen);
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= MAX_COMPARE ? s : [...s, id]));
+  // A "Compare strategies" batch parent has no metrics: it links to the comparison of its child runs (when they are in this list).
+  const batchIds = (parentId: string) => orderForCompare((runs ?? []).filter((c) => c.parentRunId === parentId && c.status === 'COMPLETED')).slice(0, MAX_COMPARE).map((c) => c.runId);
   const filtered = projectId !== 'all' || kind !== 'all' || verdict !== 'all';
   const projectOptions = [{ value: 'all', label: 'All projects' }, ...projects.map((p) => ({ value: p.projectId, label: p.name }))];
   if (projectId !== 'all' && !projects.some((p) => p.projectId === projectId)) projectOptions.push({ value: projectId, label: shortId(projectId) });
 
   const compareBtn = (
-    <Button variant="primary" icon={<GitCompare size={14} />} disabled={block !== null} onClick={() => navigate(`/compare?ids=${chosen.map((r) => r.runId).join(',')}`)} data-testid="compare-btn">
+    <Button variant="primary" icon={<GitCompare size={14} />} disabled={block !== null} onClick={() => navigate(`/compare?ids=${orderForCompare(chosen).map((r) => r.runId).join(',')}`)} data-testid="compare-btn">
       Compare{chosen.length > 0 ? ` (${chosen.length})` : ''}
     </Button>
   );
@@ -79,7 +81,7 @@ export default function RunsPage() {
     <PageContainer>
       <PageHeader
         title="Runs"
-        description="Every load and capacity run with its verdict. Select two to four runs of one project to compare."
+        description="Every load and capacity run with its verdict. Select two to five completed runs of one project to compare."
         actions={<>
           {selected.length > 0 && <Button variant="ghost" size="sm" icon={<X size={14} />} onClick={() => setSelected([])}>Clear</Button>}
           {block ? <Tooltip content={block}><span tabIndex={0}>{compareBtn}</span></Tooltip> : compareBtn}
@@ -121,17 +123,17 @@ export default function RunsPage() {
               const sel = selected.includes(r.runId);
               const st = STATUS_DOT[r.status];
               return (
-                <TR key={r.runId} interactive selected={sel} onClick={() => navigate(`/runs/${r.runId}`)} data-testid="run-row" data-run-id={r.runId}>
+                <TR key={r.runId} interactive selected={sel} onClick={() => navigate(isCompare && batchIds(r.runId).length >= 2 ? `/compare?ids=${batchIds(r.runId).join(',')}` : `/runs/${r.runId}`)} data-testid="run-row" data-run-id={r.runId}>
                   <TD onClick={(e) => e.stopPropagation()}>
-                    <input
+                    {!isCompare && <input
                       type="checkbox" className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent)] disabled:cursor-not-allowed" aria-label={`Select run ${shortId(r.runId)}`}
-                      checked={sel} disabled={isCompare || (!sel && selected.length >= MAX_COMPARE)} onChange={() => toggle(r.runId)}
-                    />
+                      checked={sel} disabled={!sel && selected.length >= MAX_COMPARE} onChange={() => toggle(r.runId)}
+                    />}
                   </TD>
                   <TD className="whitespace-nowrap text-muted" title={r.startedAt ?? undefined}>{r.startedAt ? relativeTime(r.startedAt) : 'queued'}</TD>
-                  <TD className="max-w-[200px] truncate" title={r.projectName}>{r.projectName ?? shortId(r.projectId)}<span className="ml-1.5 font-mono text-[11px] text-faint">rev {r.revisionNo}</span></TD>
-                  <TD>{isCompare ? <Pill tone="blue">compare</Pill> : <Pill tone={KIND_TONE[r.kind]}>{r.kind === 'STRATEGY_CHILD' ? 'child' : r.kind.toLowerCase()}</Pill>}</TD>
-                  <TD mono>{r.strategy}</TD>
+                  <TD className="max-w-[240px]" title={r.projectName}><span className="flex items-baseline gap-1.5"><span className="min-w-0 truncate">{r.projectName ?? shortId(r.projectId)}</span><span className="shrink-0 font-mono text-[11px] text-faint">rev {r.revisionNo}</span></span></TD>
+                  <TD>{isCompare ? <Tooltip content="A Compare strategies batch: one short child run per strategy"><span><Pill tone="blue">batch</Pill></span></Tooltip> : <Pill tone={KIND_TONE[r.kind]}>{r.kind === 'STRATEGY_CHILD' ? 'compare' : r.kind.toLowerCase()}</Pill>}</TD>
+                  <TD mono>{isCompare ? (batchIds(r.runId).length >= 2 ? <Link to={`/compare?ids=${batchIds(r.runId).join(',')}`} onClick={(e) => e.stopPropagation()} className="text-accent hover:underline">{batchIds(r.runId).length} runs</Link> : <span className="text-faint">batch</span>) : r.strategy}</TD>
                   <TD mono><Tooltip content={r.isolation}><span>{ISO[r.isolation] ?? r.isolation}</span></Tooltip></TD>
                   <TD align="right" mono>{isCompare ? '-' : r.vus}</TD>
                   <TD align="right" mono>{done && !isCompare ? formatNumber(r.tpsAvg) : '-'}</TD>

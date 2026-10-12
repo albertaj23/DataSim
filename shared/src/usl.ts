@@ -2,7 +2,8 @@
 // sigma = contention (serialization), kappa = coherency (crosstalk). Hand-written bounded least squares, no dependency.
 export interface UslParams { lambda: number; sigma: number; kappa: number }
 export interface UslPoint { n: number; x: number }
-export interface UslFit extends UslParams { nPeak: number; xMax: number; r2: number }
+/** nPeak / xMax are null when the data show no saturation (see fitUsl): the fit is then an extrapolation, not a projection. */
+export interface UslFit extends UslParams { nPeak: number | null; xMax: number | null; r2: number }
 
 /** X(N) = lambda*N / (1 + sigma*(N-1) + kappa*N*(N-1)) */
 export const uslThroughput = (n: number, p: UslParams): number => (p.lambda * n) / (1 + p.sigma * (n - 1) + p.kappa * n * (n - 1));
@@ -87,5 +88,12 @@ export function fitUsl(points: UslPoint[]): UslFit | null {
   const sst = pts.reduce((a, p) => a + (p.x - mean) ** 2, 0);
   const r2 = sst > 0 ? Math.max(0, 1 - sse / sst) : 1;
   const params = { lambda, sigma: best.s, kappa: best.k };
-  return { ...params, ...uslPeak(params), r2 };
+  // Honesty guard: report a peak only when the data support one. kappa ~ 0, a peak far beyond the tested load or a ceiling far
+  // above the best measured throughput is extrapolation, so nPeak/xMax stay null (a plain contention ceiling lambda/sigma is
+  // kept as xMax when it is within 2x of the best measurement).
+  const maxN = Math.max(...pts.map((p) => p.n)); const maxX = Math.max(...pts.map((p) => p.x));
+  const pk = uslPeak(params);
+  const retro = params.kappa >= 1e-7 && pk.nPeak <= 3 * maxN;
+  const credible = pk.xMax <= 2 * maxX;
+  return { ...params, nPeak: retro && credible ? pk.nPeak : null, xMax: credible ? pk.xMax : null, r2 };
 }

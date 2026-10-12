@@ -29,9 +29,10 @@ export const api = {
 };
 
 /** Human message for a failed result: server `message`, else a status-based fallback. */
+export const OFFLINE_MESSAGE = 'The API is offline. Start the server (npm run demo), then retry.';
 export function errorMessage(res: ApiResult<unknown>): string {
+  if (res.status === 0) return OFFLINE_MESSAGE; // never surface the browser's raw "Failed to fetch"
   const b = res.body as Partial<ApiErrorBody> | null;
   if (b && typeof b.message === 'string' && b.message) return b.message;
-  if (res.status === 0) return 'API is offline';
   return `Request failed (${res.status})`;
 }

@@ -4,10 +4,10 @@ import type { RunReport } from '@datasim/shared';
 import { Section } from '../report/Section';
 import { ChartCard } from '../charts';
 import { AXIS, GRID, MARGIN, compact } from '../charts/common';
-import { overlaySeries } from './diff';
+import { overlaySeries, runLetter } from './diff';
 
 /** One restrained colour per run, from the tokens plus the violet the charts already use for deadlocks. */
-export const RUN_COLORS = ['var(--accent)', 'var(--info)', 'var(--warn)', '#a78bfa'] as const;
+export const RUN_COLORS = ['var(--accent)', 'var(--info)', 'var(--warn)', '#a78bfa', '#f472b6'] as const;
 
 function OverlayTooltip({ active, payload, label, unit, labels }: { active?: boolean; payload?: { dataKey?: string | number; value?: unknown; color?: string }[]; label?: number | string; unit: string; labels: string[] }) {
   if (!active || !payload?.length) return null;
@@ -30,7 +30,7 @@ function OverlayTooltip({ active, payload, label, unit, labels }: { active?: boo
 function Overlay({ runs, labels, title, unit, pick, sloMs }: { runs: RunReport[]; labels: string[]; title: string; unit: string; pick: (s: RunReport['samples'][number]) => number; sloMs?: number }) {
   const data = useMemo(() => overlaySeries(runs, pick), [runs, pick]);
   return (
-    <ChartCard title={title} provenance="MEASURED" height={220} legend={labels.map((l, i) => ({ label: l, color: RUN_COLORS[i]! }))} empty={data.length === 0 && 'No samples were recorded'}>
+    <ChartCard title={title} provenance="MEASURED" height={220} empty={data.length === 0 && 'No samples were recorded'}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={MARGIN}>
           <CartesianGrid {...GRID} />
@@ -51,6 +51,14 @@ const pickP95 = (s: RunReport['samples'][number]) => s.p95Ms;
 export function CompareCharts({ runs, labels }: { runs: RunReport[]; labels: string[] }) {
   return (
     <Section id="charts" title="Over time" provenance="MEASURED" aside="seconds since the measured window started">
+      {/* One legend for both charts: per-chart legends squeezed the titles into truncation. */}
+      <ul className="mb-2 flex flex-wrap gap-x-4 gap-y-1" aria-label="Run colours">
+        {labels.map((l, i) => (
+          <li key={i} className="flex items-center gap-1.5 font-mono text-xs text-muted">
+            <span className="inline-block h-[2px] w-3 rounded-full" style={{ background: RUN_COLORS[i] }} />{runLetter(i)} {l}
+          </li>
+        ))}
+      </ul>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <Overlay runs={runs} labels={labels} title="Throughput (tps)" unit=" tps" pick={pickTps} />
         <Overlay runs={runs} labels={labels} title="p95 latency (ms)" unit=" ms" pick={pickP95} sloMs={runs[0]?.design.slo.p95Ms} />

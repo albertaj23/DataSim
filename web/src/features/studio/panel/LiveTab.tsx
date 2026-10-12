@@ -4,8 +4,10 @@ import { useDesignStore } from '../../../lib/designStore';
 import { formatMs } from '../../../lib/format';
 import { Button, EmptyState, Pill, cn } from '../../../ui';
 import { DbChart, ErrorsChart, InvariantsChart, LatencyChart, TpsChart } from '../../charts';
+import { isCompareReport } from '../compare';
 import type { useRunActions } from '../runFlow';
 import { PHASES, describePhase, isActive, phaseFill, phaseIndex, useRunStore } from '../runStore';
+import { CompareLive } from './CompareLive';
 
 function PhaseBar() {
   const s = useRunStore();
@@ -36,6 +38,7 @@ export function LiveTab({ run }: { run: ReturnType<typeof useRunActions> }) {
   const report = useRunStore((s) => s.report);
   const phase = useRunStore((s) => describePhase(s));
   const sloMs = useDesignStore((s) => s.design.slo.p95Ms);
+  const isCompare = useRunStore((s) => s.children.length > 0) || isCompareReport(report);
   const verdict = !active ? report?.slo ?? null : null;
   const failedRun = !active && report && (report.run.status === 'FAILED');
   const chartData = useMemo(() => samples, [samples]);
@@ -62,7 +65,9 @@ export function LiveTab({ run }: { run: ReturnType<typeof useRunActions> }) {
         </div>
       </div>
 
-      {!active && report && (
+      {isCompare && <CompareLive active={active} />}
+
+      {!isCompare && !active && report && (
         <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-xs', failedRun ? 'border-bad/30 bg-bad/5' : verdict ? (verdict.pass ? 'border-ok/30 bg-ok/5' : 'border-bad/30 bg-bad/5') : 'border-line bg-surface')} data-testid="verdict">
           {verdict ? (
             <>
@@ -82,13 +87,15 @@ export function LiveTab({ run }: { run: ReturnType<typeof useRunActions> }) {
         </div>
       )}
 
+      {(!isCompare || active) && (
       <div className="grid min-h-[150px] flex-1 grid-cols-2 gap-2 xl:grid-cols-4">
         <TpsChart samples={chartData} height={undefined} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
         <LatencyChart samples={chartData} sloMs={sloMs} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
         <ErrorsChart samples={chartData} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
         <DbChart samples={chartData} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
       </div>
-      <InvariantsChart samples={chartData} height={96} syncId="live" className="shrink-0" />
+      )}
+      {!isCompare && <InvariantsChart samples={chartData} height={96} syncId="live" className="shrink-0" />}
     </div>
   );
 }

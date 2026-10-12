@@ -172,9 +172,11 @@ export function buildStatementStats(digests: Awaited<ReturnType<DigestTracker['c
 }
 
 // ---------------------------------------------------------------- SLO
-export function sloVerdict(design: DesignDoc, load: { totals: { p95Ms: number; count: number; errored: number }; txnStats: Array<{ txnName: string; p95Ms: number; count: number }> }): SloVerdict {
+export function sloVerdict(design: DesignDoc, load: { totals: { p95Ms: number; count: number; errored: number }; txnStats: Array<{ txnName: string; p95Ms: number; count: number }> }, invariants: InvariantResult[] = []): SloVerdict {
   const reasons: string[] = [];
   const slo = design.slo;
+  // A violated invariant is a correctness failure: it fails the run whatever the latency says, and is listed first.
+  for (const inv of invariants) if (inv.violations > 0) reasons.push(`Invariant ${inv.name} violated (${inv.violations} violation${inv.violations === 1 ? '' : 's'})`);
   if (load.totals.p95Ms > slo.p95Ms) reasons.push(`p95 ${round(load.totals.p95Ms, 1)} ms exceeds the ${slo.p95Ms} ms target`);
   for (const [name, target] of Object.entries(slo.perTxn)) {
     const t = load.txnStats.find((x) => x.txnName === name);
@@ -191,19 +193,22 @@ export function detectBottleneck(design: DesignDoc, load: LoadResult): Bottlenec
   const M = load.totals.meanMs; if (M <= 0 || load.totals.count === 0) return null;
   const nameOf = (id: string | null) => design.nodes.find((x) => x.id === id)?.name ?? id ?? 'node';
   const cands: Array<{ score: number; b: Omit<Bottleneck, 'severity'> }> = [];
+  // Every candidate scores its share of the mean latency breakdown; the largest share wins (a db lock-wait share within 25% of the
+  // top wins ties: lock waits hold pooled connections, so the pool/queue waits behind them are symptoms).
   for (const nd of load.nodes) {
     const q = nd.queueMs / M;
-    if (q >= 0.15 || (nd.workerUtil >= 0.85 && q >= 0.08)) cands.push({ score: q, b: { nodeId: nd.nodeId, kind: 'app', reason: `${nameOf(nd.nodeId)}: requests wait ${round(nd.queueMs, 1)} ms in the worker queue (${Math.round(q * 100)}% of mean latency; workers ${Math.round(nd.workerUtil * 100)}% busy)` } });
+    if (q >= 0.12 || (nd.workerUtil >= 0.85 && q >= 0.08)) cands.push({ score: q, b: { nodeId: nd.nodeId, kind: 'app', reason: `${nameOf(nd.nodeId)}: requests wait ${round(nd.queueMs, 1)} ms in the worker queue (${Math.round(q * 100)}% of mean latency; workers ${Math.round(nd.workerUtil * 100)}% busy)` } });
     const p = nd.poolMs / M;
-    if (p >= 0.15) cands.push({ score: p, b: { nodeId: nd.nodeId, kind: 'pool', reason: `${nameOf(nd.nodeId)}: waiting for a pooled connection takes ${round(nd.poolMs, 1)} ms (${Math.round(p * 100)}% of mean latency; pool ${Math.round(nd.poolUtil * 100)}% in use)` } });
+    if (p >= 0.12 || (nd.poolUtil >= 0.9 && p >= 0.06)) cands.push({ score: p, b: { nodeId: nd.nodeId, kind: 'pool', reason: `${nameOf(nd.nodeId)}: waiting for a pooled connection takes ${round(nd.poolMs, 1)} ms (${Math.round(p * 100)}% of mean latency; pool ${Math.round(nd.poolUtil * 100)}% in use)` } });
   }
   const lockPerReq = load.totals.count ? load.db.rowLockTimeMs / load.totals.count : 0;
   const lockShare = lockPerReq / M;
   const saturated = load.topology.totalPool > 0 && load.db.threadsAvg >= 0.75 * load.topology.totalPool;
   const dbShare = load.phases.dbMs / M;
-  const dbScore = Math.max(lockShare, saturated ? dbShare * 0.9 : 0);
-  if (dbScore >= 0.15 && load.topology.mysqlNodeId) {
-    cands.push({ score: dbScore, b: { nodeId: load.topology.mysqlNodeId, kind: 'db', reason: lockShare >= dbShare * 0.9 * (saturated ? 1 : 0) && lockShare >= 0.15
+  const threadScore = saturated ? dbShare * 0.9 : 0;
+  const dbScore = Math.max(lockShare, threadScore);
+  if (dbScore >= 0.1 && load.topology.mysqlNodeId) {
+    cands.push({ score: dbScore, b: { nodeId: load.topology.mysqlNodeId, kind: 'db', reason: lockShare >= threadScore
       ? `Database: row-lock waits average ${round(lockPerReq, 1)} ms per transaction (${Math.round(lockShare * 100)}% of mean latency; ${load.db.rowLockWaits} lock waits)`
       : `Database: ${round(load.db.threadsAvg, 1)} threads running on average; execution is ${Math.round(dbShare * 100)}% of mean latency` } });
   }
@@ -213,9 +218,14 @@ export function detectBottleneck(design: DesignDoc, load: LoadResult): Bottlenec
   const netShare = load.phases.netMs / M;
   if (netShare >= 0.5 && load.nodes[0]) cands.push({ score: netShare * 0.8, b: { nodeId: load.nodes[0].nodeId, kind: 'network', reason: `Emulated network links account for ${Math.round(netShare * 100)}% of mean latency` } });
   cands.sort((a, b) => b.score - a.score);
-  const top = cands[0];
-  if (!top || top.score < 0.25) return null;
-  return { ...top.b, severity: top.score >= 0.5 ? 'critical' : 'warning' };
+  let top = cands[0];
+  // A breached SLO lowers the bar (name the largest contributor); a run inside its SLO needs a clear >= 20% share.
+  if (!top || top.score < (load.totals.p95Ms > design.slo.p95Ms ? 0.12 : 0.2)) return null;
+  if (top.b.kind !== 'db') {
+    const lockCand = cands.find((c) => c.b.kind === 'db' && lockShare >= threadScore);
+    if (lockCand && lockCand.score >= top.score * 0.75) top = lockCand;
+  }
+  return { ...top.b, severity: top.score >= 0.45 ? 'critical' : 'warning' };
 }
 
 // ---------------------------------------------------------------- findings
@@ -282,9 +292,11 @@ export function buildFindings(inp: FindingInput): Finding[] {
   if (top && load.lockSnapshotsWithWaits >= 2 && lockTotal >= 5 && top.count / lockTotal >= 0.3 && load.db.rowLockWaits >= 10) {
     const lockPerReq = load.totals.count ? load.db.rowLockTimeMs / load.totals.count : 0;
     const share = M > 0 ? lockPerReq / M : 0;
-    const fixTo = saferStrategy(Object.keys(top.waitingTxns));
+    // Only a strictly stronger variant is a fix: `atomic` for waiters that still run naive/optimistic flows. Never the strategy already in use.
+    const waiters = txns.filter((t) => t.name in top.waitingTxns);
+    const fixTo: StrategyVariant | null = waiters.some((t) => t.variants.atomic !== undefined && strategyFor(t, inp.strategy) !== 'atomic' && strategyFor(t, inp.strategy) !== 'pessimistic') ? 'atomic' : null;
     add(share >= 0.3 ? 'HIGH' : share >= 0.1 ? 'MEDIUM' : 'LOW', 'HOT_ROW', `Lock waits concentrate on ${top.table}${top.lockData ? ` (key ${top.lockData})` : ''}`,
-      `${Math.round((top.count / lockTotal) * 100)}% of the sampled lock waits queue on the same ${top.indexName ?? 'record'} lock. Under strict two-phase locking an exclusive row lock is held until commit, so writers to one hot row are serialized no matter how many connections the pool has. Shorten the critical section (atomic UPDATE), shard the counter, or queue the writes.`,
+      `${Math.round((top.count / lockTotal) * 100)}% of the sampled lock waits queue on the same ${top.indexName ?? 'record'} lock. Under strict two-phase locking an exclusive row lock is held until commit, so writers to one hot row are serialized no matter how many connections the pool has. ${fixTo ? 'Shorten the critical section (atomic UPDATE), shard the counter, or queue the writes.' : 'The critical section is already as short as the strategy allows, so the remaining options are structural: shard the hot counter across several rows, or queue the writes and apply them in batches.'}`,
       { table: top.table, index: top.indexName, lockData: top.lockData, lockMode: top.lockMode, shareOfWaits: round(top.count / lockTotal, 3), rowLockWaits: load.db.rowLockWaits, avgLockWaitMs: round(load.db.rowLockWaits ? load.db.rowLockTimeMs / load.db.rowLockWaits : 0, 1), lockWaitShareOfLatency: round(share, 3), waiting: top.waitingTxns, blocking: top.blockingTxns },
       fixTo ? { type: 'SET_STRATEGY', strategy: fixTo } : null, fixTo ? `Use the ${fixTo} strategy` : undefined);
   }
@@ -296,15 +308,16 @@ export function buildFindings(inp: FindingInput): Finding[] {
     const node = appNodes.find((a) => a.id === poolNode.nodeId);
     const totalInstances = appNodes.reduce((s, a) => s + a.config.instances, 0);
     let fix: FindingFix | null = null; let label: string | undefined;
-    if (node) {
+    // A bigger pool only moves the queue into InnoDB when connections are mostly held waiting on row locks: no pool fix then.
+    const lockBound = load.db.rowLockTimeMs / Math.max(1, load.totals.count) > poolNode.poolMs * 0.5;
+    if (node && !lockBound) {
       const maxPerInstance = Math.min(100, Math.floor((MAX_TOTAL_POOL - (appNodes.reduce((s, a) => s + a.config.instances * a.config.poolSize, 0) - node.config.instances * node.config.poolSize)) / Math.max(1, node.config.instances)));
       const bigger = Math.min(node.config.poolSize * 2, maxPerInstance);
       if (bigger > node.config.poolSize) { fix = { type: 'SET_POOL', poolSize: bigger }; label = `Set pool size to ${bigger}`; }
       else if (node.config.instances < 8 && (totalInstances + 1) * node.config.poolSize <= MAX_TOTAL_POOL) { fix = { type: 'SET_INSTANCES', instances: node.config.instances + 1 }; label = `Run ${node.config.instances + 1} instances`; }
     }
-    const lockBound = load.db.rowLockTimeMs / Math.max(1, load.totals.count) > poolNode.poolMs * 0.5;
     add(lockBound ? 'MEDIUM' : poolNode.poolMs / M >= 0.5 ? 'HIGH' : 'MEDIUM', 'POOL_STARVATION', `Requests wait ${round(poolNode.poolMs, 1)} ms for a database connection`,
-      'A connection pool is a bounded resource: when all connections are checked out, further requests queue (Little\'s law: waiting time grows with arrival rate times service time). A larger pool, or more app instances, raises DB concurrency; if connections are mostly held while waiting on locks, more of them only moves the queue into InnoDB.',
+      'A connection pool is a bounded resource: when all connections are checked out, further requests queue (Little\'s law: waiting time grows with arrival rate times service time). ' + (lockBound ? 'Here the connections are mostly held while waiting on row locks, so a larger pool would only move the queue into InnoDB: resolve the lock contention first (see the hot-row finding) instead of adding connections.' : 'A larger pool, or more app instances, raises DB concurrency until the database itself saturates.'),
       { nodeId: poolNode.nodeId, poolWaitMs: round(poolNode.poolMs, 2), shareOfMeanLatency: round(poolNode.poolMs / M, 3), poolUtilization: round(poolNode.poolUtil, 3), poolSize: node?.config.poolSize, instances: node?.config.instances, lockWaitsDominate: lockBound },
       fix, label);
   }
@@ -363,7 +376,9 @@ export function buildFindings(inp: FindingInput): Finding[] {
   }
 
   // ---- SLO
-  if (!inp.slo.pass) add('HIGH', 'SLO', 'SLO not met', 'The service-level objective is a contract on tail latency and error rate; a breach under the tested load means the design needs more capacity or less contention before it can promise this behaviour. See the bottleneck and the findings above for the likely cause.', { reasons: inp.slo.reasons, p95Ms: load.totals.p95Ms, tpsAvg: load.totals.tpsAvg });
+  // Invariant failures have their own finding; this one covers the latency / error-rate contract.
+  const sloReasons = inp.slo.reasons.filter((r) => !r.startsWith('Invariant '));
+  if (sloReasons.length) add('HIGH', 'SLO', 'SLO not met', 'The service-level objective is a contract on tail latency and error rate; a breach under the tested load means the design needs more capacity or less contention before it can promise this behaviour. See the bottleneck and the findings above for the likely cause.', { reasons: sloReasons, p95Ms: load.totals.p95Ms, tpsAvg: load.totals.tpsAvg });
 
   return out.map((f, i) => ({ ...f, findingNo: i + 1 })).sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]).map((f, i) => ({ ...f, findingNo: i + 1 }));
 }

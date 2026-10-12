@@ -65,7 +65,7 @@ export default function ComparePage() {
     catch { toast.error('Could not copy', 'Copy the address from the browser bar instead.'); }
   };
 
-  const description = ready ? `${runs[0]!.run.projectName ?? 'Project'} · ${runs.length} runs · deltas are against run A` : 'Side-by-side metrics, invariants, findings and design changes for two to four runs.';
+  const description = ready ? `${runs[0]!.run.projectName ?? 'Project'} · ${runs.length} runs · deltas are against run A` : 'Side-by-side metrics, invariants, findings and design changes for two to five runs.';
 
   return (
     <PageContainer>
@@ -77,7 +77,7 @@ export default function ComparePage() {
       {ids.length < MIN_COMPARE ? (
         <EmptyState
           icon={<GitCompare size={20} />} title="Pick runs to compare"
-          description="Select two to four completed runs of the same project on the Runs page, or run Compare strategies from the Studio."
+          description="Select two to five completed runs of the same project on the Runs page, or run Compare strategies from the Studio."
           actions={<Link to="/runs" className={buttonClass('primary', 'md')}>Choose runs</Link>}
         />
       ) : error ? (

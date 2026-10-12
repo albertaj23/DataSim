@@ -16,9 +16,9 @@ export function RunStrip({ runs, labels, candidates, onMove, onRemove, onAdd }: 
         const { run, slo } = r;
         return (
           <div key={run.runId} className="flex min-w-[220px] flex-1 flex-col gap-1.5 rounded-lg border border-line bg-surface px-3 py-2.5" style={{ borderTopColor: RUN_COLORS[i], borderTopWidth: 2 }} data-testid="run-card">
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded font-mono text-[11px] font-medium" style={{ background: `color-mix(in srgb, ${RUN_COLORS[i]} 18%, transparent)`, color: RUN_COLORS[i] }}>{runLetter(i)}</span>
-              <Link to={`/runs/${run.runId}`} className="min-w-0 flex-1 truncate font-mono text-sm text-fg hover:text-accent" title="Open the full report">{labels[i]}</Link>
+              <Link to={`/runs/${run.runId}`} className="min-w-0 flex-1 break-words font-mono text-sm leading-tight text-fg hover:text-accent" title="Open the full report">{labels[i]}</Link>
               <span className="flex shrink-0 items-center">
                 <IconButton size="sm" label="Move earlier" icon={<ArrowLeft size={14} />} disabled={i === 0} onClick={() => onMove(i, i - 1)} />
                 <IconButton size="sm" label="Move later" icon={<ArrowRight size={14} />} disabled={i === runs.length - 1} onClick={() => onMove(i, i + 1)} />

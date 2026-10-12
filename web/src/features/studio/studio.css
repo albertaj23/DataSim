@@ -1,6 +1,24 @@
 /* Studio canvas chrome. Colours come from the global tokens in index.css. */
+:root {
+  --card-bg: var(--surface-2);
+  --card-line: var(--line);
+  --tile-bg: var(--surface);
+  --mm-node: var(--line-strong);
+  --mm-mask: rgb(0 0 0 / 0.55);
+}
+/* Light theme: white cards with a visible border on the off-white canvas. */
+:root[data-theme='light'] {
+  --card-bg: var(--surface);
+  --card-line: var(--line-strong);
+  --tile-bg: var(--surface-2);
+  --mm-node: #9a9aa4;
+  --mm-mask: rgb(24 24 27 / 0.1);
+}
 .ds-canvas .react-flow__node { cursor: default; }
 .ds-canvas .react-flow__node.dragging { cursor: grabbing; }
+/* While dragging a link: nodes that cannot be its other end. */
+.ds-canvas .react-flow__node { transition: opacity 120ms var(--ease); }
+.ds-canvas .react-flow__node.ds-dim { opacity: 0.4; }
 
 .ds-handle.react-flow__handle {
   width: 8px;

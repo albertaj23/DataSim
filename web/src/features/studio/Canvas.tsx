@@ -1,6 +1,6 @@
 import {
   Background, BackgroundVariant, ConnectionLineType, Controls, MiniMap, Panel, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow,
-  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnConnectEnd,
+  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnConnectEnd, type OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Redo2, Undo2, Workflow } from 'lucide-react';
@@ -10,8 +10,8 @@ import type { NodeType } from '@datasim/shared';
 import { useDesignStore } from '../../lib/designStore';
 import { IconButton, useToast } from '../../ui';
 import { useStudioActions } from './actions';
-import { checkConnection } from './connect';
-import { NODE_H, NODE_W } from './layout';
+import { checkConnection, invalidTargets, resolveDrop } from './connect';
+import { FIT, NODE_H, NODE_W } from './layout';
 import { LinkEdge } from './LinkEdge';
 import { NodeCard } from './NodeCard';
 import { newEdge } from './nodes';
@@ -22,6 +22,18 @@ export const DND_MIME = 'application/x-datasim-node';
 const nodeTypes = { card: NodeCard };
 const edgeTypes = { link: LinkEdge };
 const defaultEdgeOptions = { type: 'link' } as const;
+/** Below this viewport height the minimap would cover nodes, so it is hidden. */
+const MINIMAP_MIN_VIEWPORT_H = 820;
+
+function useViewportHeight() {
+  const [h, setH] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const on = () => setH(window.innerHeight);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return h;
+}
 
 export function Canvas() {
   const design = useDesignStore((s) => s.design);
@@ -37,6 +49,11 @@ export function Canvas() {
   const pastLen = useStore(useDesignStore.temporal, (s) => s.pastStates.length);
   const futureLen = useStore(useDesignStore.temporal, (s) => s.futureStates.length);
   const wrapper = useRef<HTMLDivElement>(null);
+  const viewportH = useViewportHeight();
+  /** Set while a connection drag is open and when it already produced an edge (onConnect runs before onConnectEnd). */
+  const connected = useRef(false);
+  /** The user panned or zoomed by hand: stop re-fitting when the container resizes. */
+  const userMoved = useRef(false);
 
   // Store -> canvas. Reuse previous node objects when nothing changed so React Flow keeps its measured sizes.
   useEffect(() => {
@@ -95,16 +112,30 @@ export function Canvas() {
   const onConnect = useCallback((c: Connection) => {
     const d = useDesignStore.getState().design;
     if (!checkConnection(d, c.source, c.target).ok) return;
+    connected.current = true;
     useDesignStore.getState().update((draft) => { draft.edges.push(newEdge(draft, c.source, c.target)); });
   }, []);
 
-  const onConnectEnd: OnConnectEnd = useCallback((_e, state) => {
+  const dim = useCallback((ids: Set<string>) => setNodes((ns) => ns.map((n) => { const cls = ids.has(n.id) ? 'ds-dim' : undefined; return n.className === cls ? n : { ...n, className: cls }; })), []);
+
+  const onConnectStart: OnConnectStart = useCallback((_e, { nodeId, handleType }) => {
+    connected.current = false;
+    setConnecting(true);
+    if (nodeId) dim(invalidTargets(useDesignStore.getState().design, nodeId, handleType));
+  }, [dim]);
+
+  // A drag released anywhere over a node (not only on its ~10 px handle): valid links connect, invalid ones explain themselves.
+  const onConnectEnd: OnConnectEnd = useCallback((e, state) => {
     setConnecting(false);
-    if (state.isValid !== false || !state.toNode || !state.fromNode || state.toNode.id === state.fromNode.id) return;
-    const [s, t] = state.fromHandle?.type === 'target' ? [state.toNode.id, state.fromNode.id] : [state.fromNode.id, state.toNode.id];
-    const r = checkConnection(useDesignStore.getState().design, s, t);
-    if (!r.ok) toast.error('Connection not allowed', r.reason);
-  }, [toast]);
+    dim(new Set());
+    if (connected.current || !state.fromNode) return;
+    const pt = 'changedTouches' in e ? e.changedTouches[0] : e;
+    const under = pt ? document.elementFromPoint(pt.clientX, pt.clientY)?.closest<HTMLElement>('.react-flow__node')?.dataset.id : undefined;
+    const drop = resolveDrop(useDesignStore.getState().design, state.fromNode.id, state.fromHandle?.type, under ?? state.toNode?.id);
+    if (!drop) return;
+    if (!drop.result.ok) toast.error('Connection not allowed', drop.result.reason);
+    else useDesignStore.getState().update((draft) => { draft.edges.push(newEdge(draft, drop.source, drop.target)); });
+  }, [toast, dim]);
 
   const onDragOver = (e: DragEvent) => {
     if (!e.dataTransfer.types.includes(DND_MIME)) return;
@@ -121,9 +152,23 @@ export function Canvas() {
 
   // Re-fit when a different project opens.
   useEffect(() => {
-    const t = setTimeout(() => void rf.fitView({ padding: 0.12, maxZoom: 1 }), 60);
+    userMoved.current = false;
+    const t = setTimeout(() => void rf.fitView(FIT), 60);
     return () => clearTimeout(t);
   }, [projectId, rf]);
+
+  // Re-fit when the container resizes (window, bottom panel), unless the user has placed the view by hand.
+  useEffect(() => {
+    const el = wrapper.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let t: ReturnType<typeof setTimeout>;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => { if (!userMoved.current) void rf.fitView(FIT); }, 150);
+    });
+    ro.observe(el);
+    return () => { clearTimeout(t); ro.disconnect(); };
+  }, [rf]);
 
   const hint = design.nodes.length === 0
     ? { title: 'Start with Users, an App server and a Database', text: 'Drag components from the palette, or click one to add it. Then drag from a right-hand handle to connect them.' }
@@ -143,8 +188,9 @@ export function Canvas() {
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onSelectionChange={onSelectionChange}
+        onMoveStart={(e) => { if (e) userMoved.current = true; }}
         onConnect={onConnect}
-        onConnectStart={() => setConnecting(true)}
+        onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         isValidConnection={isValidConnection}
         onDelete={({ nodes: ns, edges: es }) => actions.remove(ns.map((n) => n.id), es.map((e) => e.id))}
@@ -161,19 +207,21 @@ export function Canvas() {
         minZoom={0.3}
         maxZoom={1.5}
         fitView
-        fitViewOptions={{ padding: 0.12, maxZoom: 1 }}
+        fitViewOptions={FIT}
         deleteKeyCode={['Delete', 'Backspace']}
         zoomOnDoubleClick={false}
         className="!bg-transparent"
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="var(--grid-dot)" />
-        <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap pannable zoomable position="bottom-right" nodeColor="var(--line-strong)" nodeStrokeWidth={0} maskColor="rgb(0 0 0 / 0.55)" style={{ background: 'var(--surface)', width: 160, height: 100 }} />
+        <Controls showInteractive={false} position="bottom-left" onFitView={() => { userMoved.current = false; }} />
+        {viewportH >= MINIMAP_MIN_VIEWPORT_H && (
+          <MiniMap pannable zoomable position="bottom-right" nodeColor="var(--mm-node)" nodeStrokeWidth={0} bgColor="var(--surface)" maskColor="var(--mm-mask)" style={{ width: 160, height: 100 }} />
+        )}
         <Panel position="top-left" className="flex items-center gap-1 rounded-lg border border-line bg-surface p-0.5">
           <IconButton size="sm" label="Undo" shortcut="Ctrl+Z" icon={<Undo2 size={14} />} disabled={pastLen === 0} onClick={actions.undo} />
           <IconButton size="sm" label="Redo" shortcut="Ctrl+Shift+Z" icon={<Redo2 size={14} />} disabled={futureLen === 0} onClick={actions.redo} />
           <span className="mx-0.5 h-4 w-px bg-line" />
-          <IconButton size="sm" label="Auto layout" icon={<Workflow size={14} />} onClick={actions.layout} disabled={design.nodes.length === 0} />
+          <IconButton size="sm" label="Auto layout" icon={<Workflow size={14} />} onClick={() => { userMoved.current = false; actions.layout(); }} disabled={design.nodes.length === 0} />
         </Panel>
       </ReactFlow>
       {hint && (

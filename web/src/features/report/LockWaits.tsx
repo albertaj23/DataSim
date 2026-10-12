@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { LockWaitRow } from '@datasim/shared';
 import { formatNumber } from '../../lib/format';
 import { TBody, TD, TH, THead, TR, Table } from '../../ui';
-import { aggregateLockWaits, layoutNodes, waitGraph, type GraphEdge, type GraphNode } from './logic';
+import { aggregateLockWaits, layoutNodes, waitGraph, type GraphEdge, type GraphNode, type LockAgg } from './logic';
 import { Panel, Section } from './Section';
 
 const W = 560;
@@ -81,6 +81,29 @@ export function WaitGraph({ rows }: { rows: LockWaitRow[] }) {
   );
 }
 
+/** Identical sampled waits collapsed into one row with a sample count (see `aggregateLockWaits`). */
+export function LockAggTable({ agg, limit = 40, className }: { agg: LockAgg[]; limit?: number; className?: string }) {
+  return (
+    <div className={`overflow-auto rounded-lg ${className ?? ''}`}>
+      <Table>
+        <THead><TR><TH>Waiting</TH><TH>Blocked by</TH><TH>Resource</TH><TH>Mode</TH><TH>Key</TH><TH align="right">Samples</TH></TR></THead>
+        <TBody>
+          {agg.slice(0, limit).map((l, i) => (
+            <TR key={i}>
+              <TD mono className="max-w-[110px] truncate" title={l.waiting}>{l.waiting}</TD>
+              <TD mono className="max-w-[110px] truncate" title={l.blocking}>{l.blocking}</TD>
+              <TD mono className="text-muted">{l.table}{l.index ? `.${l.index}` : ''}</TD>
+              <TD mono className="text-muted">{l.mode}</TD>
+              <TD mono className="max-w-[90px] truncate text-muted" title={l.key ?? ''}>{l.key ?? '-'}</TD>
+              <TD align="right" mono>{formatNumber(l.count)}</TD>
+            </TR>
+          ))}
+        </TBody>
+      </Table>
+    </div>
+  );
+}
+
 export function LockWaits({ rows }: { rows: LockWaitRow[] }) {
   const agg = useMemo(() => aggregateLockWaits(rows), [rows]);
   return (
@@ -93,23 +116,7 @@ export function LockWaits({ rows }: { rows: LockWaitRow[] }) {
             <div className="mb-1 text-xs text-muted">Wait-for graph · arrow = waits for</div>
             <WaitGraph rows={rows} />
           </Panel>
-          <div className="max-h-[300px] overflow-auto rounded-lg">
-            <Table>
-              <THead><TR><TH>Waiting</TH><TH>Blocked by</TH><TH>Resource</TH><TH>Mode</TH><TH>Key</TH><TH align="right">Samples</TH></TR></THead>
-              <TBody>
-                {agg.slice(0, 40).map((l, i) => (
-                  <TR key={i}>
-                    <TD mono className="max-w-[110px] truncate" title={l.waiting}>{l.waiting}</TD>
-                    <TD mono className="max-w-[110px] truncate" title={l.blocking}>{l.blocking}</TD>
-                    <TD mono className="text-muted">{l.table}{l.index ? `.${l.index}` : ''}</TD>
-                    <TD mono className="text-muted">{l.mode}</TD>
-                    <TD mono className="max-w-[90px] truncate text-muted" title={l.key ?? ''}>{l.key ?? '-'}</TD>
-                    <TD align="right" mono>{formatNumber(l.count)}</TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          </div>
+          <LockAggTable agg={agg} className="max-h-[300px]" />
         </div>
       )}
     </Section>

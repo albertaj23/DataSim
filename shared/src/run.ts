@@ -79,7 +79,8 @@ export interface Finding {
   fix: FindingFix | null; fixLabel?: string;
 }
 export interface CapacityPoint { stepNo: number; vus: number; tps: number; p50Ms: number; p95Ms: number; errorRate: number; runId?: string }
-export interface CapacityFit { sigma: number; kappa: number; lambda: number; nPeak: number; xMax: number; r2: number }
+/** nPeak / xMax are null when no saturation was observed within the tested load (no honest peak can be projected). Persisted as 0. */
+export interface CapacityFit { sigma: number; kappa: number; lambda: number; nPeak: number | null; xMax: number | null; r2: number }
 export interface CapacityResult { points: CapacityPoint[]; fit: CapacityFit | null; kneeVus: number | null; sustainedVus: number | null; sentence: string }
 export interface Bottleneck { nodeId: string; kind: 'app' | 'pool' | 'db' | 'cache' | 'network'; reason: string; severity: 'warning' | 'critical' }
 export interface SloVerdict { pass: boolean; reasons: string[] }
