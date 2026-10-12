@@ -74,7 +74,7 @@ export function buildCourseRegistration(): DesignDoc {
         },
         {
           // Deliberately no index on `slot`: the advisor finds the full scan in search_sections.
-          name: 'section', seedRows: 12000, position: { x: 680, y: 160 }, primaryKey: ['section_id'],
+          name: 'section', seedRows: 40000, position: { x: 680, y: 160 }, primaryKey: ['section_id'],
           columns: [
             col('section_id', INT, { ai: true }),
             col('course_id', INT, { seed: fkRef('course', 'course_id', 'zipf', 1.1) }),

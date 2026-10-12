@@ -174,7 +174,7 @@ function Designer({ focusTable }: { focusTable?: string }) {
             </TabsList>
             <TabsContent value="table" className="min-h-0 flex-1 overflow-auto">
               {selectedTable ? (
-                <TableEditor key={selectedTable.name} table={selectedTable} problems={problems.filter((p) => p.path.table === selectedTable.name)} onDeleted={() => setSelected(null)} />
+                <TableEditor key={selectedTable.name} table={selectedTable} onRenamed={setSelected} problems={problems.filter((p) => p.path.table === selectedTable.name)} onDeleted={() => setSelected(null)} />
               ) : (
                 <div className="p-4">
                   <EmptyState title="No table selected" description="Select a table on the canvas to edit its columns, keys, constraints and seed generators." />

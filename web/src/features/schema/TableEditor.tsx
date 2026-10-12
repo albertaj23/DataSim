@@ -168,7 +168,7 @@ function ColumnRow({ table, column, open, onToggle, problems, mutate, schemaSeed
 }
 
 // ---------------------------------------------------------------- table editor
-export function TableEditor({ table, problems, onDeleted }: { table: Table; problems: Problem[]; onDeleted: () => void }) {
+export function TableEditor({ table, problems, onDeleted, onRenamed }: { table: Table; problems: Problem[]; onDeleted: () => void; onRenamed?: (name: string) => void }) {
   const toast = useToast();
   const design = useDesignStore((s) => s.design);
   const update = useDesignStore((s) => s.update);
@@ -195,6 +195,7 @@ export function TableEditor({ table, problems, onDeleted }: { table: Table; prob
   const rename = (to: string) => {
     const mentions = sqlMentions(design, table.name);
     update((d) => renameTable(d, table.name, to));
+    onRenamed?.(to);
     if (mentions > 0) toast.info(`Renamed ${table.name} to ${to}`, `${mentions} workload statement${mentions === 1 ? '' : 's'} may still use the old name. SQL is not rewritten automatically.`);
   };
 

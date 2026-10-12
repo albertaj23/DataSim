@@ -24,7 +24,7 @@ export function autoLayout(design: Pick<DesignDoc, 'nodes' | 'edges'>): Record<s
   }
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 88, marginx: 0, marginy: 0 });
+  g.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 48, marginx: 0, marginy: 0 });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of design.nodes) g.setNode(n.id, { width: NODE_W, height: NODE_H });
   for (const e of design.edges) if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target);

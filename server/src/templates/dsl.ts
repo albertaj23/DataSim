@@ -27,5 +27,5 @@ export const fkRef = (table: string, column: string, dist: 'uniform' | 'zipf' = 
 export const fromTable = (table: string, column: string, dist: 'uniform' | 'zipf' = 'uniform', s = 1.1): ValueGenerator => ({ kind: 'fromTable', table, column, dist, s });
 
 /** Left-to-right canvas layout used by every template. */
-export const POS = { users: { x: 0, y: 140 }, lb: { x: 320, y: 140 }, app: { x: 640, y: 140 }, cache: { x: 960, y: 20 }, db: { x: 960, y: 260 } };
+export const POS = { users: { x: 0, y: 140 }, lb: { x: 292, y: 140 }, app: { x: 584, y: 140 }, cache: { x: 876, y: 20 }, db: { x: 876, y: 260 } };
 export const edge = (source: string, target: string, latencyMs = 1, jitterMs = 0) => ({ id: `e_${source}_${target}`, source, target, latencyMs, jitterMs });

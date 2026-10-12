@@ -58,7 +58,7 @@ export function useStepper(initialScenario: string | null) {
       const loaded = st.ok ? st.body.scenarioId : null;
       if (loaded) setState(st.body);
       const wanted = initialScenario && sc.body.some((x) => x.id === initialScenario) ? initialScenario : null;
-      setSelectedId(loaded ?? wanted ?? sc.body[0]?.id ?? '');
+      setSelectedId(wanted ?? loaded ?? sc.body[0]?.id ?? '');
     })();
     return () => { alive = false; };
   }, [initialScenario]);
