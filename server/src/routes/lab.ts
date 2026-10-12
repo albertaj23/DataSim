@@ -6,7 +6,7 @@ import { LOST_UPDATE_VARIANTS, LostUpdateParamError, runLostUpdateExperiment } f
 import { listRuns } from '../lab/persist.js';
 import { runIndexExperiment } from '../lab/indexExperiment.js';
 import { RaceParamError, runStreamLimitExperiment } from '../lab/raceRunner.js';
-import { getLiveStrategy, ServiceError } from '../services/playback.js';
+import { getLiveStrategy, ServiceError } from '../services/liveStrategy.js';
 import { STRATEGY_NAMES } from '../strategies/index.js';
 import { asyncHandler } from './http.js';
 
