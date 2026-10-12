@@ -49,6 +49,8 @@ test('schema designer: table, column, FK, DDL, provision', async ({ page, reques
   await inspector.getByLabel('Table name').fill('books');
   await inspector.getByLabel('Table name').press('Enter');
   await shot(page, 'schema-two-tables');
+  // (renaming the selected table clears the selection: product quirk, reported) select books on the canvas again.
+  await page.locator('.react-flow__node').filter({ hasText: 'books' }).click();
 
   // A column on books, then an FK books.column -> authors.id.
   await inspector.getByRole('button', { name: 'Add column' }).click();
@@ -59,9 +61,7 @@ test('schema designer: table, column, FK, DDL, provision', async ({ page, reques
   await inspector.getByLabel('Type of author_id').click();
   await page.getByRole('option', { name: 'INT', exact: true }).click();
   await inspector.getByRole('button', { name: 'Add foreign key' }).click();
-  await inspector.getByLabel('Foreign key columns').click();
-  await page.getByRole('button', { name: 'author_id' }).click();
-  await page.keyboard.press('Escape');
+  // the new FK defaults to the first non-key column (author_id) -> the other table's key
   await expect(inspector.getByLabel('Foreign key columns')).toContainText('author_id');
   await expect(inspector.getByLabel('Referenced table')).toContainText('authors');
   await shot(page, 'schema-fk');
@@ -77,7 +77,7 @@ test('schema designer: table, column, FK, DDL, provision', async ({ page, reques
 
   // Provision the sandbox.
   await page.getByRole('button', { name: 'Provision sandbox' }).click();
-  await expect(page.getByText(/Provisioning ok · 2 tables/)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(/Provisioning ok · 2 tables/).first()).toBeVisible({ timeout: 90_000 });
   await shot(page, 'schema-provisioned');
 
   con.assertClean();
