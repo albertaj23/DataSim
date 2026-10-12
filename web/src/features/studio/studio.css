@@ -1,0 +1,36 @@
+/* Studio canvas chrome. Colours come from the global tokens in index.css. */
+.ds-canvas .react-flow__node { cursor: default; }
+.ds-canvas .react-flow__node.dragging { cursor: grabbing; }
+
+.ds-handle.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-3);
+  opacity: 0;
+  transition: opacity 120ms var(--ease), background-color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.ds-handle.react-flow__handle-left { left: -4px; }
+.ds-handle.react-flow__handle-right { right: -4px; }
+.ds-handle-off.react-flow__handle { display: none; }
+
+.ds-canvas .react-flow__node:hover .ds-handle,
+.ds-canvas .react-flow__node.selected .ds-handle,
+.ds-connecting .ds-handle { opacity: 1; }
+.ds-handle.react-flow__handle:hover,
+.ds-handle.react-flow__handle.connectingfrom { background: var(--accent); border-color: var(--accent); }
+.ds-handle.react-flow__handle.connectingto.valid { background: var(--ok); border-color: var(--ok); }
+.ds-handle.react-flow__handle.connectingto:not(.valid) { background: var(--bad); border-color: var(--bad); }
+
+.ds-canvas .react-flow__connection-path { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 4; }
+.ds-canvas .react-flow__edge.selected .react-flow__edge-path { stroke: var(--accent); }
+
+.ds-canvas .react-flow__controls { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: none; }
+.ds-canvas .react-flow__controls-button { border-bottom: 1px solid var(--line); width: 28px; height: 28px; }
+.ds-canvas .react-flow__controls-button:last-child { border-bottom: 0; }
+.ds-canvas .react-flow__controls-button svg { width: 12px; height: 12px; fill: currentColor; }
+.ds-canvas .react-flow__minimap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: none; }
+.ds-canvas .react-flow__panel { margin: 12px; }

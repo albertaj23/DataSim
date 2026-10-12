@@ -14,12 +14,16 @@ interface DesignState {
   /** Latest pinned revision (null before the first Save/Run). */
   revisionNo: number | null;
   saveStatus: SaveStatus;
+  /** True when the draft differs from the latest pinned revision (drives the Save button). */
+  pinnedDirty: boolean;
   /** Replace the document without creating an undo step (initial load, revert). */
-  load: (projectId: string, design: DesignDoc, revisionNo: number | null) => void;
+  load: (projectId: string, design: DesignDoc, revisionNo: number | null, pinnedDirty?: boolean) => void;
   /** Mutate a deep copy of the design; marks dirty and creates one undo step. */
   update: (mutate: (draft: DesignDoc) => void) => void;
   setSaveStatus: (s: SaveStatus) => void;
+  /** Records a newly pinned revision (clears pinnedDirty). */
   setRevisionNo: (n: number | null) => void;
+  setPinnedDirty: (v: boolean) => void;
 }
 
 export const useDesignStore = create<DesignState>()(
@@ -29,17 +33,19 @@ export const useDesignStore = create<DesignState>()(
       design: emptyDesign(),
       revisionNo: null,
       saveStatus: 'idle',
-      load: (projectId, design, revisionNo) => {
-        set({ projectId, design, revisionNo, saveStatus: 'saved' });
+      pinnedDirty: false,
+      load: (projectId, design, revisionNo, pinnedDirty = false) => {
+        set({ projectId, design, revisionNo, saveStatus: 'saved', pinnedDirty });
         useDesignStore.temporal.getState().clear();
       },
       update: (mutate) => {
         const draft = structuredClone(get().design);
         mutate(draft);
-        set({ design: draft, saveStatus: 'dirty' });
+        set({ design: draft, saveStatus: 'dirty', pinnedDirty: true });
       },
       setSaveStatus: (saveStatus) => set({ saveStatus }),
-      setRevisionNo: (revisionNo) => set({ revisionNo }),
+      setRevisionNo: (revisionNo) => set({ revisionNo, pinnedDirty: false }),
+      setPinnedDirty: (pinnedDirty) => set({ pinnedDirty }),
     }),
     {
       partialize: (s) => ({ design: s.design }),
