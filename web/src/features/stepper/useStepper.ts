@@ -99,6 +99,12 @@ export function useStepper(initialScenario: string | null) {
     return () => clearInterval(id);
   }, [scenarioId, connected, anyBusy]);
 
+  // Leaving the page must not leave open transactions behind: their row locks (account rows) would block
+  // Concurrency Lab runs and the test suite. Reset rolls both transactions back.
+  const openRef = useRef(false);
+  openRef.current = !!state && (state.txns.T1.cursor > 0 || state.txns.T2.cursor > 0) && !(state.txns.T1.killed && state.txns.T2.killed);
+  useEffect(() => () => { if (openRef.current) void api.post('/lab/stepper/reset', {}); }, []);
+
   const adopt = useCallback((s: StepperStateView) => { setState(s); setLastWaits([]); setInvariant(null); }, []);
 
   const post = useCallback(async <T,>(path: string, body: unknown, onOk: (b: T) => void) => {

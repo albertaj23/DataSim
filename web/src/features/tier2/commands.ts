@@ -65,7 +65,7 @@ export function scoreCommand(value: string, search: string, keywords: string[] =
   if (!q) return 1;
   const hay = value.toLowerCase();
   const kw = keywords.join(' ').toLowerCase();
-  const words = q.split(/s+/);
+  const words = q.split(/\s+/);
   if (words.some((w) => !hay.includes(w) && !kw.includes(w))) return 0;
   let s = 0.4;
   if (hay.includes(q)) s += 0.3;
