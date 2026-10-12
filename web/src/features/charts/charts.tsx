@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartCard } from './ChartCard';
+import { invariantSeries } from './invariants';
 import { AXIS, ChartTooltip, compact, GRID, MARGIN, SERIES, type BaseChartProps } from './common';
 
 // All charts take plain RunSample[]: the Studio feeds them the live ring buffer, the report feeds them the persisted samples.
@@ -81,6 +83,27 @@ export function DbChart({ samples, height, syncId, className, emptyText }: BaseC
           <Tooltip content={<ChartTooltip />} cursor={cursor} isAnimationActive={false} />
           <Line dataKey="threadsRunning" name="threads running" type="monotone" stroke={SERIES.threads} strokeWidth={1.5} dot={false} isAnimationActive={false} />
           <Line dataKey="rowLockWaits" name="lock waits" type="stepAfter" stroke={SERIES.lockWaits} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+}
+
+const INV_COLORS = ['var(--bad)', 'var(--warn)', '#a78bfa', 'var(--info)', 'var(--accent)'];
+
+/** Tier 2: one step line per invariant, a point per 5 s tick. Renders nothing when no sampling happened (live views only: ticks are not persisted). */
+export function InvariantsChart({ samples, height, syncId, className }: Omit<BaseChartProps, 'emptyText'>) {
+  const { names, rows } = useMemo(() => invariantSeries(samples), [samples]);
+  if (rows.length === 0) return null;
+  return (
+    <ChartCard title="Invariant violations" provenance="MEASURED" height={height} className={className} legend={names.map((n, i) => ({ label: n, color: INV_COLORS[i % INV_COLORS.length]! }))}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={rows} syncId={syncId} margin={MARGIN}>
+          <CartesianGrid {...GRID} />
+          {xAxis}
+          <YAxis width={34} allowDecimals={false} tickFormatter={compact} {...AXIS} />
+          <Tooltip content={<ChartTooltip />} cursor={cursor} isAnimationActive={false} />
+          {names.map((n, i) => <Line key={n} dataKey={n} name={n} type="stepAfter" stroke={INV_COLORS[i % INV_COLORS.length]} strokeWidth={1.5} dot={{ r: 2 }} connectNulls isAnimationActive={false} />)}
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>

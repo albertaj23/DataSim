@@ -9,9 +9,9 @@ import type { LoadResult } from './load.js';
 import { round } from './util.js';
 
 // ---------------------------------------------------------------- invariants
-export async function checkInvariants(conn: Connection, design: DesignDoc): Promise<InvariantResult[]> {
+export async function checkInvariants(conn: Connection, design: DesignDoc, timeoutMs = 20000): Promise<InvariantResult[]> {
   const out: InvariantResult[] = [];
-  await conn.query('SET SESSION max_execution_time = 20000').catch(() => undefined);
+  await conn.query(`SET SESSION max_execution_time = ${Math.round(timeoutMs)}`).catch(() => undefined);
   for (const inv of design.workload.invariants) {
     try {
       const [rows] = await conn.query(inv.sql);

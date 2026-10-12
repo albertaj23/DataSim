@@ -142,6 +142,8 @@ describe('pills', () => {
     expect(livePills('app', { tps: 812.4, p95: 41, pool: 16, poolMax: 16 })).toEqual([{ text: '812 tps' }, { text: 'p95 41ms' }, { text: 'pool 16/16', tone: 'amber' }]);
     expect(livePills('redis', { hit: 0.87 })).toEqual([{ text: 'hit 87%' }]);
     expect(livePills('mysql', { tps: 500, threads: 7, lockWaits: 0 })).toEqual([{ text: '500 tps' }, { text: 'thr 7' }]);
+    expect(livePills('mysql', { tps: 500, violations: 12 })).toEqual([{ text: '500 tps' }, { text: 'viol 12', tone: 'red' }]);
+    expect(livePills('mysql', { violations: 0 })).toEqual([]);
     expect(livePills('users', undefined)).toEqual([]);
   });
 

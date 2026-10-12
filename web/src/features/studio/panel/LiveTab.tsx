@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useDesignStore } from '../../../lib/designStore';
 import { formatMs } from '../../../lib/format';
 import { Button, EmptyState, Pill, cn } from '../../../ui';
-import { DbChart, ErrorsChart, LatencyChart, TpsChart } from '../../charts';
+import { DbChart, ErrorsChart, InvariantsChart, LatencyChart, TpsChart } from '../../charts';
 import type { useRunActions } from '../runFlow';
 import { PHASES, describePhase, isActive, phaseFill, phaseIndex, useRunStore } from '../runStore';
 
@@ -88,6 +88,7 @@ export function LiveTab({ run }: { run: ReturnType<typeof useRunActions> }) {
         <ErrorsChart samples={chartData} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
         <DbChart samples={chartData} className="h-full" syncId="live" emptyText={active ? 'Waiting for the first sample' : 'No samples'} />
       </div>
+      <InvariantsChart samples={chartData} height={96} syncId="live" className="shrink-0" />
     </div>
   );
 }

@@ -16,6 +16,8 @@ import { CasRetry, TxnReject, compileStep, execSteps } from './exec.js';
 import type { CompiledStep, Params } from './exec.js';
 import { Histogram, clamp, hr, msSince, round, sleep } from './util.js';
 import { adminConnect } from './admin.js';
+import { checkInvariants } from './analysis.js';
+import { InvariantSampler, sumViolations } from './invariantSampler.js';
 
 export type Pattern = UsersConfig['pattern'];
 
@@ -289,6 +291,11 @@ export async function runLoad(plan: LoadPlan): Promise<LoadResult> {
   const adminStatus = await adminConnect();
   const adminLocks = await adminConnect();
   const adminKeys = await adminConnect(plan.database);
+  // Tier 2 invariant sampling: its own read-only connection so a slow invariant can never queue behind (or in front of) the other samplers.
+  const invDefs = plan.design.workload.invariants;
+  const adminInv = invDefs.length ? await adminConnect(plan.database) : null;
+  if (adminInv) await adminInv.query('SET SESSION TRANSACTION READ ONLY').catch(() => undefined);
+  const invSampler = adminInv ? new InvariantSampler(() => checkInvariants(adminInv, plan.design, 2000)) : null;
   const dbSampler = new DbSampler(adminStatus);
   const closeResources = async () => {
     await new Promise((r) => setTimeout(r, 0));
@@ -300,7 +307,7 @@ export async function runLoad(plan: LoadPlan): Promise<LoadResult> {
       } catch { /* best effort */ }
       redis.disconnect();
     }
-    await Promise.allSettled([adminStatus.end(), adminLocks.end(), adminKeys.end()]);
+    await Promise.allSettled([adminStatus.end(), adminLocks.end(), adminKeys.end(), adminInv?.end()]);
   };
 
   // ---- transactions
@@ -565,6 +572,7 @@ export async function runLoad(plan: LoadPlan): Promise<LoadResult> {
     sumRecQueue = sumRecNet = sumRecApp = sumRecPool = sumRecDb = 0; sumN = 0;
     cacheHits = cacheMisses = cacheErrors = 0;
     measureStartHr = hr(); dbSampler.measuring = true; measuring = true;
+    invSampler?.maybeTick(); // baseline at the start of the measured window
   };
 
   const vus: Vu[] = Array.from({ length: plan.vus }, (_, id) => ({ id, rng: Rng.derive(plan.seed, 'vu', id), started: false }));
@@ -611,13 +619,16 @@ export async function runLoad(plan: LoadPlan): Promise<LoadResult> {
       for (const [id, l] of lbAgg) nodes[id] = { tps: interval.served, inflight: inflightReq, served: l.served };
       if (redisNode && redis) nodes[redisNode.id] = { ops: lookups, ...(cacheRatio !== null ? { hit: round(cacheRatio, 3) } : {}) };
       nodes[mysqlNode.id] = { tps: interval.served, threads: dbs.threadsRunning, lockWaits: dbs.rowLockWaits, ...(dbs.bpHitRatio !== null ? { bp: round(dbs.bpHitRatio, 4) } : {}) };
+      if (measuring && tS >= 1) invSampler?.maybeTick();
+      const inv = invSampler?.take();
+      if (invSampler?.latest) nodes[mysqlNode.id]!.violations = sumViolations(invSampler.latest);
       const sample: RunSample = {
         tS: tS + sampleOffset, tps: interval.served, p50Ms: round(interval.hist.percentile(0.5)), p95Ms: round(interval.hist.percentile(0.95)), p99Ms: round(interval.hist.percentile(0.99)),
         errors: interval.errors, activeVus: Math.min(target, plan.vus), appQueue: queue, poolWaiting: waiting,
         threadsRunning: dbs.threadsRunning, rowLockWaits: dbs.rowLockWaits, lockWaitMs: dbs.lockWaitMs, bpHitRatio: dbs.bpHitRatio, cacheHitRatio: cacheRatio,
-        retries: interval.retries, deadlocks: interval.deadlocks, nodes,
+        retries: interval.retries, deadlocks: interval.deadlocks, nodes, ...(inv ? { invariants: inv } : {}),
       };
-      if (measuring && tS >= 1) { const { nodes: _n, ...stored } = sample; void _n; samples.push(stored); }
+      if (measuring && tS >= 1) { const { nodes: _n, invariants: _i, ...stored } = sample; void _n; void _i; samples.push(stored); }
       plan.emit(SOCKET_EVENTS.sample, { runId: plan.runId, sample } satisfies RunSampleEvent);
       emitStatus(measuring ? 'RUNNING' : 'WARMING', measuring ? 'Measuring' : 'Warm-up', measuring ? Math.max(0, tS) : sec, measuring ? plan.durationS : plan.warmupS);
       interval.reset(); intHits = 0; intMisses = 0; for (const a of nodeAggs.values()) a.win.reset();

@@ -158,6 +158,7 @@ export function livePills(type: NodeType, m: Record<string, number> | undefined)
       if (has('tps')) out.push({ text: `${n0(m.tps!)} tps` });
       if (has('threads')) out.push({ text: `thr ${n0(m.threads!)}` });
       if (has('lockWaits') && m.lockWaits! > 0) out.push({ text: `lw ${n0(m.lockWaits!)}`, tone: 'amber' });
+      if (has('violations') && m.violations! > 0) out.push({ text: `viol ${n0(m.violations!)}`, tone: 'red' });
       break;
   }
   return out;

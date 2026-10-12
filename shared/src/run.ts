@@ -45,6 +45,8 @@ export interface RunSample {
   retries?: number; deadlocks?: number;
   /** Live pills per canvas node: e.g. { tps: 812, p95: 41, pool: 16, poolMax: 16, hit: 0.87 }. Only on live socket events. */
   nodes?: Record<string, Record<string, number>>;
+  /** Tier 2: invariant violations (per invariant name) from the in-run 5 s sampling. Only on live socket events, only on the second a fresh result arrived; never persisted. */
+  invariants?: Record<string, number>;
 }
 export interface TxnStat {
   txnName: string; count: number; committed: number; rejected: number; errored: number; retries: number; deadlocks: number;
