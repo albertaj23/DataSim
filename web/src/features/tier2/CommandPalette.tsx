@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import { formatMs, relativeTime, shortId } from '../../lib/format';
 import { useTheme } from '../../lib/theme';
 import { Kbd, cn } from '../../ui';
-import { collectCommands, groupCommands, registerCommands, useCommandRegistry, type Command } from './commands';
+import { collectCommands, groupCommands, registerCommands, scoreCommand, useCommandRegistry, type Command } from './commands';
 
 interface PaletteApi { open: () => void; toggle: () => void }
 const Ctx = createContext<PaletteApi>({ open: () => undefined, toggle: () => undefined });
@@ -76,7 +76,7 @@ function Palette({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bool
         <RD.Overlay className="ds-overlay fixed inset-0 z-[80] bg-[var(--scrim)]" />
         <RD.Content aria-describedby={undefined} className="ds-dialog fixed left-1/2 top-[15vh] z-[81] w-[580px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-hidden rounded-[10px] border border-line bg-surface focus-visible:outline-none">
           <RD.Title className="sr-only">Command palette</RD.Title>
-          <Cmdk label="Command palette" loop vimBindings={false}>
+          <Cmdk label="Command palette" loop vimBindings={false} filter={scoreCommand}>
             <div className="flex items-center gap-2 border-b border-line px-3">
               <Search size={16} className="shrink-0 text-faint" />
               <Cmdk.Input value={search} onValueChange={setSearch} placeholder="Search commands, projects and runs" style={{ outline: 'none' }} className="h-11 flex-1 bg-transparent text-sm text-fg placeholder:text-faint" />

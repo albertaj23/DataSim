@@ -56,6 +56,23 @@ export function groupCommands(cmds: Command[]): Array<{ group: string; items: Co
   return [...groups].map(([group, items]) => ({ group, items })).sort((a, b) => rank(a.group) - rank(b.group) || a.group.localeCompare(b.group));
 }
 
+/**
+ * Palette search: every word of the query must occur in the command text or its keywords (substring, any order).
+ * cmdk's default fuzzy matcher scatters letters ("normalize" matches "Set isolation to READ COMMITTED"), which ranks badly.
+ */
+export function scoreCommand(value: string, search: string, keywords: string[] = []): number {
+  const q = search.trim().toLowerCase();
+  if (!q) return 1;
+  const hay = value.toLowerCase();
+  const kw = keywords.join(' ').toLowerCase();
+  const words = q.split(/s+/);
+  if (words.some((w) => !hay.includes(w) && !kw.includes(w))) return 0;
+  let s = 0.4;
+  if (hay.includes(q)) s += 0.3;
+  if (words.every((w) => hay.includes(' ' + w) || hay.startsWith(w))) s += 0.2;
+  return s + 0.1 * (1 - Math.min(hay.indexOf(words[0]!) < 0 ? hay.length : hay.indexOf(words[0]!), hay.length) / hay.length);
+}
+
 /** Small cross-feature UI signals that are not worth threading through props. */
 type Request = 'normalize' | 'query';
 interface Tier2Ui { requested: Request | null; request: (r: Request) => void; consume: (r: Request) => boolean }

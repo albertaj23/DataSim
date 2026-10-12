@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { collectCommands, groupCommands, registerCommands, useCommandRegistry, useTier2Ui, type Command } from './commands';
+import { collectCommands, groupCommands, registerCommands, scoreCommand, useCommandRegistry, useTier2Ui, type Command } from './commands';
 
 const cmd = (id: string, group: string, extra: Partial<Command> = {}): Command => ({ id, title: id, group, run: () => undefined, ...extra });
 
@@ -36,5 +36,19 @@ describe('command registry', () => {
     expect(useTier2Ui.getState().consume('query')).toBe(false);
     expect(useTier2Ui.getState().consume('normalize')).toBe(true);
     expect(useTier2Ui.getState().consume('normalize')).toBe(false);
+  });
+});
+
+describe('scoreCommand', () => {
+  it('requires every word, in any order, and ignores scattered letters', () => {
+    expect(scoreCommand('Editors Normalize schema (BCNF / 3NF assistant)', 'normalize')).toBeGreaterThan(0);
+    expect(scoreCommand('Isolation Set isolation to READ COMMITTED', 'normalize')).toBe(0);
+    expect(scoreCommand('Strategy Set strategy to atomic', 'atomic set')).toBeGreaterThan(0);
+    expect(scoreCommand('Strategy Set strategy to atomic', 'atomic zzz')).toBe(0);
+  });
+  it('matches keywords and ranks exact phrases higher', () => {
+    expect(scoreCommand('Run Run capacity test', 'usl', ['usl', 'knee'])).toBeGreaterThan(0);
+    expect(scoreCommand('Run Run load test', 'load test')).toBeGreaterThan(scoreCommand('Run Run load test', 'test load'));
+    expect(scoreCommand('anything', '')).toBe(1);
   });
 });
