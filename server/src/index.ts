@@ -8,10 +8,12 @@ import { closeRedis } from './db/redis.js';
 import { setLiveStrategy } from './services/liveStrategy.js';
 import { runMigrations } from './db/migrations.js';
 import { ensureRunnerUser } from './db/runner.js';
+import { seedTemplates } from './templates/index.js';
 
 await runMigrations();
 await ensureRunnerUser();
 await setLiveStrategy(config.DEFAULT_STRATEGY);
+await seedTemplates();
 
 const server = http.createServer(createApp());
 const io = attachSocket(server);

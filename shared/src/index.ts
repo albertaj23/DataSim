@@ -8,3 +8,4 @@ export * from './prng';
 export * from './generators';
 export * from './ddl';
 export * from './usl';
+export * from './normalize';
