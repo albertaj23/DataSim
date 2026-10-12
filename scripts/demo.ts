@@ -41,6 +41,7 @@ function start(name: string, args: string[]) {
   child.on('exit', (code) => { if (!stopping) { console.error(`[demo] ${name} exited (${code})`); stop(1); } });
   children.push(child);
 }
+async function isUp(url: string) { try { return (await fetch(url)).status < 500; } catch { return false; } }
 let stopping = false;
 function stop(code = 0) {
   stopping = true;
@@ -54,10 +55,20 @@ function stop(code = 0) {
 process.on('SIGINT', () => stop(0));
 process.on('SIGTERM', () => stop(0));
 
-log('starting API (migrations, restricted user, templates run at boot)');
-start('server', ['-w', 'server', 'run', 'start']);
-await waitFor(API, 'API', 120_000, (s) => s === 200);
-start('web', ['-w', 'web', 'run', 'dev']);
-await waitFor(WEB, 'web');
+async function main() {
+  if (await isUp(API)) log('API already running on :4000, reusing it');
+  else {
+    log('starting API (migrations, restricted user, templates run at boot)');
+    start('server', ['-w', 'server', 'run', 'start']);
+    await waitFor(API, 'API', 120_000, (s) => s === 200);
+  }
+  if (await isUp(WEB)) log('web already running on :5173, reusing it');
+  else {
+    start('web', ['-w', 'web', 'run', 'dev']);
+    await waitFor(WEB, 'web');
+  }
 
-console.log(`\n  DataSim is running\n\n    ${WEB}\n\n  Ctrl+C to stop (containers keep running; \`npm run db:down\` stops them)\n`);
+  console.log(`\n  DataSim is running\n\n    ${WEB}\n\n  Ctrl+C to stop (containers keep running; \`npm run db:down\` stops them)\n`);
+
+}
+void main();
