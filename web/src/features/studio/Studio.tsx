@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../lib/api';
 import { useDesignStore } from '../../lib/designStore';
 import { useToast } from '../../ui';
 import { SchemaDesigner } from '../schema';
+import { useStudioCommands } from '../tier2/studioCommands';
 import { WorkloadEditor } from '../workload';
 import { useStudioActions } from './actions';
 import { BottomPanel } from './BottomPanel';
@@ -53,6 +54,7 @@ function Body({ projectId, name, onRename }: { projectId: string; name: string; 
 
   useDraftAutosave(projectId);
   useStudioShortcuts(run);
+  useStudioCommands(projectId, name, run);
 
   const client = useMemo(() => validateDesign(design), [design]);
   const problems = useMemo(() => mergeProblems(client, server && server.design === design ? server.problems : []), [client, server, design]);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DesignDoc, type Finding, type RunReport } from '@datasim/shared';
-import { compareValue, diffDesigns, diffFindings, diffRuns, findingKey, formatDelta, invariantMatrix, overlaySeries, runLabels } from './diff';
+import { compareBlockReason, compareValue, diffDesigns, diffFindings, diffRuns, findingKey, formatDelta, invariantMatrix, overlaySeries, runLabels } from './diff';
 
 const design = (patch: (d: DesignDoc) => void = () => undefined): DesignDoc => {
   const d = DesignDoc.parse({
@@ -123,16 +123,16 @@ describe('diffRuns', () => {
   });
   it('includes the design diff across revisions', () => {
     const out = diffRuns(report(), report({ run: { revisionNo: 2 }, design: design((d) => { d.slo.p95Ms = 1; }) }));
-    expect(out.map((e) => e.area)).toEqual(['Run settings', 'SLO']);
+    expect(out.map((e) => e.area)).toEqual(['SLO']);
   });
 });
 
 describe('findings and invariants', () => {
   const idx = finding({ kind: 'FULL_SCAN', severity: 'MEDIUM', title: 'Full table scan on section', fix: { type: 'ADD_INDEX', table: 'section', columns: ['slot'], name: 'ix' } });
   const naive = (n: number) => finding({ kind: 'INVARIANT_NAIVE', title: `Invariant violated under the naive strategy: no_overbooking (${n})` });
-  it('keys ignore numbers in titles and key order in fixes', () => {
+  it('keys ignore numbers in titles and the strategy-dependent fix', () => {
     expect(findingKey(naive(17))).toBe(findingKey(naive(3)));
-    expect(findingKey(idx)).toBe(findingKey({ ...idx, fix: { name: 'ix', columns: ['slot'], table: 'section', type: 'ADD_INDEX' } }));
+    expect(findingKey({ ...idx, fix: null })).toBe(findingKey(idx));
   });
   it('marks resolved and new findings against the first run', () => {
     const rows = diffFindings([report({ findings: [naive(17), idx] }), report({ findings: [idx, finding({ kind: 'SLO', title: 'SLO not met', severity: 'LOW' })] })]);
@@ -157,5 +157,16 @@ describe('overlaySeries', () => {
     const s = (tS: number, tps: number) => ({ tS, tps, p50Ms: 0, p95Ms: 0, p99Ms: 0, errors: 0, activeVus: 0, appQueue: 0, poolWaiting: 0, threadsRunning: 0, rowLockWaits: 0, lockWaitMs: 0, bpHitRatio: null, cacheHitRatio: null });
     const rows = overlaySeries([report({ samples: [s(1, 10), s(2, 20)] }), report({ samples: [s(2, 5), s(3, 7)] })], (x) => x.tps);
     expect(rows).toEqual([{ tS: 1, r0: 10 }, { tS: 2, r0: 20, r1: 5 }, { tS: 3, r1: 7 }]);
+  });
+});
+
+describe('compareBlockReason', () => {
+  const r = (projectId = 'p', status = 'COMPLETED') => ({ projectId, status });
+  it('needs 2-4 completed runs of one project', () => {
+    expect(compareBlockReason([r()])).toMatch(/at least 2/);
+    expect(compareBlockReason([r(), r()])).toBeNull();
+    expect(compareBlockReason([r(), r(), r(), r(), r(), r()])).toMatch(/up to 5/);
+    expect(compareBlockReason([r(), r('q')])).toMatch(/same project/);
+    expect(compareBlockReason([r(), r('p', 'RUNNING')])).toMatch(/completed/);
   });
 });

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MAX_TOTAL_POOL, type DesignNode } from '@datasim/shared';
 import { useDesignStore } from '../../lib/designStore';
 import { Button, FormRow, Input, NumberField, Pill, ProvenanceTag, SectionHeader, Select, Slider } from '../../ui';
+import { DbFitCard } from '../tier2/DbFitCard';
 import { useStudioActions } from './actions';
 import { patchConfig, patchEdge, renameNode, schemaSummary, workloadSummary } from './mutations';
 import { NODE_ICON } from './NodeCard';
@@ -152,6 +153,7 @@ function MysqlForm({ node }: { node: Extract<DesignNode, { type: 'mysql' }> }) {
         </dl>
         <Button size="sm" className="w-full" onClick={() => openSchema()}>Open schema designer</Button>
       </Section>
+      <DbFitCard />
     </>
   );
 }

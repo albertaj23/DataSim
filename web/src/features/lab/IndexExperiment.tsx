@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Play } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { IndexExperimentResult, IndexVariant, LabErrorBody } from '../../lib/labApi';
@@ -72,7 +72,7 @@ export function IndexExperiment() {
                     <TH>Index setup</TH>
                     <TH>EXPLAIN key</TH>
                     <TH>Access type</TH>
-                    <TH align="right">Rows est.</TH>
+                    <TH align="right" title="Optimizer estimate; can be stale right after a bulk load">Rows est.</TH>
                     <TH align="right">Count query</TH>
                     <TH align="right">Locks held</TH>
                     <TH align="right">Record / table</TH>
@@ -82,7 +82,7 @@ export function IndexExperiment() {
                 <TBody>
                   {result.variants.map((v) => (
                     <TR key={v.variant}>
-                      <TD>
+                      <TD className="py-1.5">
                         <div className="font-medium">{VARIANT[v.variant].title}</div>
                         <div className="text-xs text-faint">{VARIANT[v.variant].sub}</div>
                       </TD>
@@ -104,7 +104,7 @@ export function IndexExperiment() {
 
               <ChartCard title="Locks held by one account's UPDATE" provenance="MEASURED" height={150} legend={[{ label: 'other account blocked', color: 'var(--bad)' }, { label: 'ran freely', color: 'var(--ok)' }]}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chart} layout="vertical" margin={{ top: 2, right: 12, bottom: 0, left: 0 }}>
+                  <BarChart data={chart} layout="vertical" margin={{ top: 2, right: 44, bottom: 0, left: 0 }}>
                     <CartesianGrid {...GRID} vertical horizontal={false} />
                     <XAxis type="number" allowDecimals={false} {...AXIS} />
                     <YAxis type="category" dataKey="name" width={96} interval={0} {...AXIS} />
@@ -120,6 +120,7 @@ export function IndexExperiment() {
                     />
                     <Bar dataKey="locks" radius={[0, 3, 3, 0]} isAnimationActive={false} barSize={16}>
                       {chart.map((d) => <Cell key={d.name} fill={d.blocked ? 'var(--bad)' : 'var(--ok)'} />)}
+                      <LabelList dataKey="locks" position="right" formatter={(v: number) => formatNumber(v)} style={{ fill: 'var(--muted)', fontSize: 10, fontFamily: 'var(--font-mono)' }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>

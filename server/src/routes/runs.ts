@@ -55,7 +55,7 @@ runsRouter.get('/runs/:id/export.csv', asyncHandler(async (req, res) => {
 }));
 
 runsRouter.post('/compare', asyncHandler(async (req, res) => {
-  const { runIds } = z.object({ runIds: z.array(Id).min(2).max(4) }).parse(req.body);
+  const { runIds } = z.object({ runIds: z.array(Id).min(2).max(5) }).parse(req.body);
   const reports = await Promise.all(runIds.map((id) => loadReport(id)));
   const missing = runIds.filter((_, i) => !reports[i]);
   if (missing.length) throw new ServiceError(404, 'NOT_FOUND', `Run not found: ${missing.join(', ')}`);

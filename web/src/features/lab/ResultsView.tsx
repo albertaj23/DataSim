@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartCard } from '../charts';
 import { AXIS, GRID } from '../charts/common';
 import { Table, TBody, TD, TH, THead, TR, cn } from '../../ui';
@@ -61,9 +61,9 @@ export function ResultsChart({ rows, metrics = CHART_METRICS }: { rows: ResultRo
         <span className="text-xs text-muted">Compare by</span>
         <Segmented label="Chart metric" value={metric} onChange={setMetric} options={metrics.map((m) => ({ value: m.value, label: m.label }))} />
       </div>
-      <ChartCard title={def.label} provenance="MEASURED" height={Math.max(150, rows.length * 28 + 28)} legend={def.value === 'violations' ? [{ label: 'violations', color: 'var(--bad)' }, { label: 'none', color: 'var(--ok)' }] : undefined}>
+      <ChartCard title={def.label} provenance="MEASURED" height={Math.max(150, rows.length * 28 + 28)} legend={def.value === 'violations' ? [{ label: def.label.toLowerCase(), color: 'var(--bad)' }, { label: 'none', color: 'var(--ok)' }] : undefined}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 2, right: 12, bottom: 0, left: 0 }}>
+          <BarChart data={data} layout="vertical" margin={{ top: 2, right: 44, bottom: 0, left: 0 }}>
             <CartesianGrid {...GRID} vertical horizontal={false} />
             <XAxis type="number" allowDecimals={def.value === 'p95' || def.value === 'retries'} {...AXIS} />
             <YAxis type="category" dataKey="name" width={96} interval={0} {...AXIS} />
@@ -79,6 +79,7 @@ export function ResultsChart({ rows, metrics = CHART_METRICS }: { rows: ResultRo
             />
             <Bar dataKey="value" radius={[0, 3, 3, 0]} isAnimationActive={false} barSize={14}>
               {data.map((d) => <Cell key={d.name} fill={color(d.value)} />)}
+              <LabelList dataKey="value" position="right" formatter={(v: number) => num(v)} style={{ fill: 'var(--muted)', fontSize: 10, fontFamily: 'var(--font-mono)' }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

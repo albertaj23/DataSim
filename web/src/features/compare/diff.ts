@@ -76,9 +76,9 @@ export function runLabels(runs: RunReport[]): string[] {
 }
 
 // ---------------------------------------------------------------- findings + invariants matrices
-/** Findings carry numbers in their titles ("(17)"), so identity is the kind plus the fix, or the title with digits blanked. */
+/** Findings carry numbers in their titles ("(17)"), so identity is the kind plus the title with digits blanked. The suggested fix is not part of it: it changes with the strategy. */
 export function findingKey(f: Finding): string {
-  return f.fix ? `${f.kind}:${JSON.stringify(f.fix, Object.keys(f.fix).sort())}` : `${f.kind}:${f.title.replace(/[0-9][0-9.,]*/g, '#')}`;
+  return `${f.kind}:${f.title.replace(/[0-9][0-9.,]*/g, '#')}`;
 }
 
 export interface FindingRow { key: string; title: string; kind: string; cells: (Severity | null)[]; /** vs the first run */ status: ('same' | 'new' | 'resolved' | 'absent' | 'base')[]; differs: boolean }
@@ -247,4 +247,17 @@ export function diffRunSettings(a: RunReport, b: RunReport): DiffEntry[] {
 export function diffRuns(a: RunReport, b: RunReport): DiffEntry[] {
   const design = a.run.revisionNo === b.run.revisionNo ? [] : diffDesigns(a.design, b.design);
   return [...diffRunSettings(a, b), ...design];
+}
+
+// ---------------------------------------------------------------- selection (Runs page)
+export const MIN_COMPARE = 2;
+export const MAX_COMPARE = 5;
+
+/** Why the current selection cannot be compared, or null when it can. */
+export function compareBlockReason(sel: { projectId: string; status: string; strategy?: string }[]): string | null {
+  if (sel.length < MIN_COMPARE) return `Select at least ${MIN_COMPARE} runs`;
+  if (sel.length > MAX_COMPARE) return `Compare up to ${MAX_COMPARE} runs`;
+  if (new Set(sel.map((r) => r.projectId)).size > 1) return 'Select runs from the same project';
+  if (sel.some((r) => r.status !== 'COMPLETED' || r.strategy === 'compare')) return 'Only completed runs can be compared';
+  return null;
 }

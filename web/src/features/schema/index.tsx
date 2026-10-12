@@ -1,11 +1,14 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import { Database, FileCode2, FileInput, Network, Play, Plus, ShieldCheck } from 'lucide-react';
+import { Database, FileCode2, FileInput, GitFork, Network, Play, Plus, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { generateDdl, validateDesign, type Problem, type ValidateResponse } from '@datasim/shared';
 import { api, errorMessage } from '../../lib/api';
 import { useDesignStore } from '../../lib/designStore';
 import { useProvision } from '../../lib/sandbox';
 import { Button, CodeBlock, EmptyState, Overlay, Pill, Tabs, TabsContent, TabsList, TabsTrigger, Tooltip, useToast } from '../../ui';
+import { useTier2Ui } from '../tier2/commands';
+import { NormalizeDialog } from '../tier2/NormalizeDialog';
+import { QueryConsole } from '../tier2/QueryConsole';
 import { ImportDialog } from './ImportDialog';
 import { freeSpot, layoutTables, TABLE_W } from './layout';
 import { addForeignKey, findTableInMessage, isSchemaProblem, mergeProblems, newTable } from './logic';
@@ -16,7 +19,7 @@ import { TableEditor } from './TableEditor';
 
 export interface EditorOverlayProps { open: boolean; onClose: () => void; /** Optional table to focus on open. */ focusTable?: string }
 
-type PanelTab = 'table' | 'ddl' | 'problems';
+type PanelTab = 'table' | 'ddl' | 'query' | 'problems';
 
 function Designer({ focusTable }: { focusTable?: string }) {
   const toast = useToast();
@@ -30,6 +33,12 @@ function Designer({ focusTable }: { focusTable?: string }) {
   const [tab, setTab] = useState<PanelTab>('table');
   const [seedOpen, setSeedOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [normalizeOpen, setNormalizeOpen] = useState(false);
+  const requested = useTier2Ui((s) => s.requested);
+  useEffect(() => {
+    if (requested === 'normalize' && useTier2Ui.getState().consume('normalize')) setNormalizeOpen(true);
+    else if (requested === 'query' && useTier2Ui.getState().consume('query')) setTab('query');
+  }, [requested]);
   const [fitToken, setFitToken] = useState(0);
   const [focusRequest, setFocusRequest] = useState<{ name: string; token: number } | null>(focusTable ? { name: focusTable, token: 1 } : null);
   const [serverProblems, setServerProblems] = useState<Problem[]>([]);
@@ -128,6 +137,7 @@ function Designer({ focusTable }: { focusTable?: string }) {
         <Button size="sm" icon={<Network size={14} />} onClick={autoLayout} disabled={tables.length < 2}>Auto layout</Button>
         <Button size="sm" icon={<Database size={14} />} onClick={() => setSeedOpen(true)} disabled={tables.length === 0}>Seed data</Button>
         <Button size="sm" icon={<FileInput size={14} />} onClick={() => setImportOpen(true)}>Import DDL</Button>
+        <Button size="sm" icon={<GitFork size={14} />} onClick={() => setNormalizeOpen(true)}>Normalize</Button>
         <div className="mx-1 h-5 w-px bg-line" />
         <Button size="sm" variant={tab === 'ddl' ? 'secondary' : 'ghost'} className={tab === 'ddl' ? 'border-accent/50 text-accent' : undefined} icon={<FileCode2 size={14} />} onClick={() => setTab(tab === 'ddl' ? 'table' : 'ddl')}>DDL</Button>
         <Button size="sm" icon={<ShieldCheck size={14} />} loading={validating} onClick={validate}>
@@ -159,6 +169,7 @@ function Designer({ focusTable }: { focusTable?: string }) {
             <TabsList className="shrink-0 px-2">
               <TabsTrigger value="table">{selectedTable ? <span className="max-w-[160px] truncate font-mono">{selectedTable.name}</span> : 'Table'}</TabsTrigger>
               <TabsTrigger value="ddl">DDL</TabsTrigger>
+              <TabsTrigger value="query">Query</TabsTrigger>
               <TabsTrigger value="problems" count={problems.length || undefined}>Problems</TabsTrigger>
             </TabsList>
             <TabsContent value="table" className="min-h-0 flex-1 overflow-auto">
@@ -173,6 +184,9 @@ function Designer({ focusTable }: { focusTable?: string }) {
             <TabsContent value="ddl" className="min-h-0 flex-1 overflow-auto p-3">
               <CodeBlock code={ddl} downloadName="schema.sql" maxHeight={Math.max(320, window.innerHeight - 160)} lineNumbers />
             </TabsContent>
+            <TabsContent value="query" className="min-h-0 flex-1 overflow-hidden">
+              <QueryConsole />
+            </TabsContent>
             <TabsContent value="problems" className="min-h-0 flex-1 overflow-auto">
               <ProblemsPanel problems={problems} provision={prov} failedTable={failedTable} onSelectTable={(t) => focus(t)} checkedOnServer={serverProblems.length > 0} />
             </TabsContent>
@@ -181,6 +195,12 @@ function Designer({ focusTable }: { focusTable?: string }) {
       </div>
 
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={(first) => { setFitToken((n) => n + 1); if (first) select(first); }} />
+      <NormalizeDialog
+        open={normalizeOpen}
+        onOpenChange={setNormalizeOpen}
+        initialTable={selected ?? undefined}
+        onApplied={(created) => { setFitToken((n) => n + 1); if (created[0]) select(created[0]); }}
+      />
       <SeedDialog
         open={seedOpen}
         onOpenChange={setSeedOpen}

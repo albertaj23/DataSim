@@ -152,19 +152,18 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
   const [mode, setMode] = useState<RaceMode>('NORMAL');
   const [trials, setTrials] = useState(10);
   const [formError, setFormError] = useState<string | null>(null);
-  const [skipped, setSkipped] = useState<string[]>([]);
   const [batchId, setBatchId] = useState('');
   const series = useSeries<Aggregate, ExperimentResponse>(setBusy);
 
   const toggle = (s: StrategyName, on: boolean) => setStrategies((xs) => (on ? STRATEGY_NAMES.filter((n) => n === s || xs.includes(n)) : xs.filter((x) => x !== s)));
 
+  const plan = planStrategies(strategies, maxStreams, redisUp);
+
   const run = () => {
     const bad = validateStreamParams({ strategies, concurrency, accounts, maxStreams });
     setFormError(bad);
     if (bad) return;
-    const plan = planStrategies(strategies, maxStreams, redisUp);
-    setSkipped(plan.skipped.map((s) => `${s.name} skipped. ${s.reason}`));
-    if (plan.run.length === 0) { setFormError('Nothing to run: every selected strategy was skipped.'); return; }
+    if (plan.run.length === 0) { setFormError('Nothing to run: every selected strategy is unavailable with these settings.'); return; }
     const batch = uuid();
     setBatchId(batch);
     void series.start(plan.run, batch, (s) => api.post<ExperimentResponse & LabErrorBody>('/lab/experiments', {
@@ -224,10 +223,9 @@ function StreamLimitLab({ busy, setBusy }: { busy: boolean; setBusy: (b: boolean
           {formError && <Notice>{formError}</Notice>}
           <RunBar
             progress={series.progress} elapsed={series.elapsed} onRun={run} onStop={series.stop}
-            canRun={!busy && strategies.length > 0} batchRuns={series.batchRuns} exportName={`stream-limit-${batchId.slice(0, 8)}`}
-            runLabel={`Run ${strategies.length} ${strategies.length === 1 ? 'strategy' : 'strategies'}`}
+            canRun={!busy && plan.run.length > 0} batchRuns={series.batchRuns} exportName={`stream-limit-${batchId.slice(0, 8)}`}
+            runLabel={`Run ${plan.run.length} ${plan.run.length === 1 ? 'strategy' : 'strategies'}`}
           />
-          {skipped.map((s) => <Notice key={s} tone="warn">{s}</Notice>)}
           {series.failures.map((f) => <Notice key={f}>{f}</Notice>)}
         </div>
       </Panel>

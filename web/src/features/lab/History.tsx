@@ -46,7 +46,7 @@ export function History() {
     >
       <div className="flex flex-wrap items-center gap-2">
         <Segmented<ExpFilter> label="Experiment" value={exp} onChange={setExp} options={[{ value: 'all', label: 'All' }, { value: 'STREAM_LIMIT', label: 'Stream limit' }, { value: 'LOST_UPDATE', label: 'Lost update' }]} />
-        <div className="w-44"><Select size="sm" aria-label="Strategy filter" value={strategy} onValueChange={setStrategy} mono options={strategies.map((s) => ({ value: s, label: s === 'all' ? 'All strategies' : s }))} /></div>
+        <div className="w-56"><Select size="sm" aria-label="Strategy filter" value={strategy} onValueChange={setStrategy} mono options={strategies.map((s) => ({ value: s, label: s === 'all' ? 'All strategies' : s }))} /></div>
         <Segmented<View> label="View" value={view} onChange={setView} options={[{ value: 'summary', label: 'Per strategy' }, { value: 'trials', label: 'Every trial' }]} />
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" icon={<RefreshCw size={14} />} loading={loading} onClick={() => void load()}>Refresh</Button>

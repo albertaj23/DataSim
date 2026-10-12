@@ -1,5 +1,6 @@
-import { Activity, FlaskConical, Folder, Info, ListOrdered, RefreshCw, Settings } from 'lucide-react';
+import { Activity, FlaskConical, Folder, Info, ListOrdered, RefreshCw, Search, Settings } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useCommandPalette } from '../features/tier2/CommandPalette';
 import { useTheme } from '../lib/theme';
 import { useHealth } from '../lib/useHealth';
 import { Button, HowMeasurementsWork, Popover, PopoverContent, PopoverTrigger, StatusDot, Tooltip, cn, type StatusKind } from '../ui';
@@ -87,6 +88,15 @@ function SettingsButton() {
   );
 }
 
+function PaletteButton() {
+  const palette = useCommandPalette();
+  return (
+    <Tooltip content="Command palette" side="right" shortcut="Ctrl+K">
+      <button type="button" aria-label="Command palette" className={railBtn} onClick={palette.open}><Search size={18} /></button>
+    </Tooltip>
+  );
+}
+
 function HelpButton() {
   return (
     <Popover>
@@ -127,6 +137,7 @@ export function Rail() {
         })}
       </div>
       <div className="flex flex-col items-center gap-1">
+        <PaletteButton />
         <HelpButton />
         <SettingsButton />
         <HealthDot />

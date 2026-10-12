@@ -4,8 +4,8 @@ import { AlertTriangle } from 'lucide-react';
 import { cn } from '../../ui';
 
 /** Flat bordered section with a compact header row. */
-export function Panel({ title, subtitle, actions, children, className, bodyClassName }: {
-  title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string;
+export function Panel({ title, subtitle, actions, children, className, bodyClassName, flush }: {
+  title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string; /** No body padding. */ flush?: boolean;
 }) {
   return (
     <section className={cn('min-w-0 rounded-[10px] border border-line bg-surface', className)}>
@@ -18,7 +18,7 @@ export function Panel({ title, subtitle, actions, children, className, bodyClass
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={cn('p-3.5', bodyClassName)}>{children}</div>
+      <div className={cn(!flush && 'p-3.5', bodyClassName)}>{children}</div>
     </section>
   );
 }

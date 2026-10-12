@@ -5,6 +5,7 @@ import { ThemeProvider } from './lib/theme';
 import { ErrorBoundary } from './shell/ErrorBoundary';
 import { PageSkeleton } from './shell/Page';
 import { Rail } from './shell/Rail';
+import { CommandPaletteProvider } from './features/tier2/CommandPalette';
 import { EmptyState, ToastProvider, TooltipProvider } from './ui';
 
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
@@ -44,6 +45,7 @@ export default function App() {
     <ThemeProvider>
       <TooltipProvider>
         <ToastProvider>
+          <CommandPaletteProvider>
           {desktop ? (
             <div className="flex h-full">
               <Rail />
@@ -71,6 +73,7 @@ export default function App() {
               />
             </div>
           )}
+          </CommandPaletteProvider>
         </ToastProvider>
       </TooltipProvider>
     </ThemeProvider>
