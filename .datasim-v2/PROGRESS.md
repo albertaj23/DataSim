@@ -1,3 +1,11 @@
 # Progress (item | status | last green commit)
 - P0 recon, tag v1-friend, branch v2 | done | -
-- P1 foundations | in progress | -
+- P1 foundations: shared contracts, migration 005, runner user, health, retire v1, shell+kit, demo/doctor | done | see git log
+- P2 A engine (server/src/engine) | running (builder)
+- P2 D projects+templates (server/src/projects, templates) | running (builder)
+- P2 B studio UI | running (builder)
+- P2 C schema+workload editors | running (builder)
+- P3 F report/runs/compare/capacity UI | pending (needs engine)
+- P3 G lab+stepper reskin | pending
+- Vertical-slice gate (e2e flow 1) | pending
+- Docs: ARCHITECTURE, DATABASE_DESIGN, VIVA drafted; DEMO, TRACEABILITY, README, MORNING_REPORT pending

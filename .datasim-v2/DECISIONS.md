@@ -5,3 +5,10 @@
 - Existing migrations 001-004 (scenario_*) stay as files (001 untouched; 002-004 alter scenario tables so fresh DBs still migrate); v2 meta schema is migration 005. Same version table `scenario_schema_migration` is reused (renamed in meaning only).
 - Retired server routes: accounts, playback, sim, scenarios, info(+checks). Kept services/playback+accountState (lab/stepper/strategies depend on them) but no UI route; leaseReaper removed.
 - shared package consumed as TS source (main -> src/index.ts); no build step.
+- [D] pinCurrent reuses ANY existing revision with the same content hash (meta table has UNIQUE(project_id, content_hash)), so A->B->A edits return the older revision with created=false.
+- [D] Template master projects are seeded archived with a deterministic UUID (sha1 of key) so seeding is create-if-missing without races and they stay out of the Projects list; instantiate copies from code.
+- [D] POST /validate = shared validateDesign + scratch-schema DDL apply (errors mapped to tables) + PREPARE of every workload step/invariant (errors mapped to txn/variant/step); scratch DBs are dsim_scratch_<id>_<rand>, always dropped, stale ones dropped at startup.
+- [D] POST /schema/import runs pasted DDL as admin, so only CREATE TABLE / ALTER TABLE / CREATE INDEX with unqualified names are accepted; identifiers are lowercased with a warning; imported tables get seedRows 100.
+- [D] Normalization is pure TS in shared/src/normalize.ts (max 16 attributes, bitmask closure); route imports it relatively until the lead exports it from shared/src/index.ts.
+- [D] T1 search_sections has a third param min_seats (0..9) so the cache key space is ~1,440 and cache misses actually reach MySQL (144 keys would make every read a hit and hide the missing slot index).
+- [D] T2 claim derives the account from the client row (client zipf param) because the composite FK needs a consistent (client_id, account_id) pair; hot clients make hot accounts. Quota-1 "hot lab" subset is approximated by quota weights 50/30/20 (seed generators cannot see the row index).
