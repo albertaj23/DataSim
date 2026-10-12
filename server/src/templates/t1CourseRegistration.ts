@@ -177,5 +177,6 @@ WHERE e.student_id = :student ORDER BY e.enrolled_at DESC`,
       ],
     },
     slo: { p95Ms: 200, maxErrorPct: 1, perTxn: {} },
+    capacity: { steps: [50, 150, 300, 450, 500], stepDurationS: 8 },
   });
 }
