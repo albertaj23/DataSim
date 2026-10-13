@@ -45,7 +45,7 @@ Demo numbers measured on the dev laptop (150 VUs spike): naive ~450 tps, p95 ~30
 * **T1 deviates from the brief on purpose:** 24,000 sections (brief: 1,200), 36 slots, 150 VUs, `STRAIGHT_JOIN` in `search_sections`, capacity steps 50-500: needed so the advisor finding and the capacity knee actually occur on a laptop (see DECISIONS.md).
 * **Light theme** works; dark is the default and the demo theme.
 * **Projects list** shows only the latest "(primed)" project; test projects were archived.
-* **Push:** `git push -u origin v2` was attempted at the end; see the last line of this report.
+* **Push:** `git push -u origin v2` succeeded (branch `v2` is on origin; `main` untouched).
 
 ## Screenshot list
 `docs/pdf/*.png` (projects, studio idle/naive/findings, schema designer, workload editor, report naive/capacity, compare, runs, lab, stepper) and `.datasim-v2/screens/*.png` (e2e flows). Docs: README, ARCHITECTURE, DATABASE_DESIGN, DEMO, REVIEW1_TRACEABILITY, VIVA, `docs/archive/` (retired v1 docs). State files: `.datasim-v2/{PLAN,PROGRESS,DECISIONS,CONTRACTS,QA_REVIEW}.md`.
