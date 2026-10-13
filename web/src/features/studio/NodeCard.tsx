@@ -37,7 +37,7 @@ function NodeCardImpl({ id, selected }: NodeProps<CardNode>) {
     <div
       data-testid={`node-${node.type}`}
       className={cn(
-        'relative h-16 w-[248px] rounded-lg border bg-[var(--card-bg)] transition-[border-color,box-shadow] duration-150 ease-out',
+        'relative h-16 w-[224px] rounded-lg border bg-[var(--card-bg)] transition-[border-color,box-shadow] duration-150 ease-out',
         selected ? 'border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_20%,transparent)]' : tone === 'bad' ? 'border-bad shadow-[0_0_0_3px_color-mix(in_srgb,var(--bad)_16%,transparent)]' : tone === 'warn' ? 'border-warn shadow-[0_0_0_3px_color-mix(in_srgb,var(--warn)_16%,transparent)]' : 'border-[var(--card-line)] hover:border-line-strong',
       )}
     >

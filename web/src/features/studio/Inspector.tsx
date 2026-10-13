@@ -149,8 +149,11 @@ function MysqlForm({ node }: { node: Extract<DesignNode, { type: 'mysql' }> }) {
   return (
     <>
       <Section title="Engine">
-        <FormRow label="Engine"><span className="font-mono text-xs text-fg">MySQL 8.4 · InnoDB</span></FormRow>
-        <FormRow label="Isolation">{(id) => <Select id={id} value={c.isolation} onValueChange={(isolation) => set({ isolation })} options={ISOLATION_OPTIONS} />}</FormRow>
+        <div className="flex items-center justify-between gap-2 py-1">
+          <span className="text-xs text-muted">Engine</span>
+          <span className="whitespace-nowrap font-mono text-xs text-fg">MySQL 8.4 &middot; InnoDB</span>
+        </div>
+        <StackRow label="Isolation">{(id) => <Select id={id} value={c.isolation} onValueChange={(isolation) => set({ isolation })} options={ISOLATION_OPTIONS} />}</StackRow>
         <FormRow label="Lock wait">{(id) => <NumberField id={id} value={c.lockWaitTimeoutS} min={1} max={60} unit="s" onCommit={(lockWaitTimeoutS) => set({ lockWaitTimeoutS })} />}</FormRow>
         <FormRow label="Max exec time" hint="0 = unlimited">{(id) => <NumberField id={id} value={c.maxExecutionTimeMs} min={0} max={600000} step={100} unit="ms" onCommit={(maxExecutionTimeMs) => set({ maxExecutionTimeMs })} />}</FormRow>
       </Section>

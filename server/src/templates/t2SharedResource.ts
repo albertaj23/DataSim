@@ -36,8 +36,8 @@ export function buildSharedResource(): DesignDoc {
     seed: 7,
     nodes: [
       { id: 'users', type: 'users', name: 'Clients', position: POS.users, config: { vus: 150, thinkMinMs: 10, thinkMaxMs: 40, thinkDist: 'uniform', pattern: 'constant', durationS: 20, warmupS: 3 } },
-      { id: 'app', type: 'app', name: 'App server', position: { x: 360, y: 140 }, config: { instances: 1, workers: 64, processingMeanMs: 1, processingJitterMs: 1, poolSize: 24, strategy: 'naive', retry: { max: 5, backoffMs: 5 } } },
-      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 720, y: 140 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
+      { id: 'app', type: 'app', name: 'App server', position: { x: 288, y: 140 }, config: { instances: 1, workers: 64, processingMeanMs: 1, processingJitterMs: 1, poolSize: 24, strategy: 'naive', retry: { max: 5, backoffMs: 5 } } },
+      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 576, y: 140 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
     ],
     edges: [edge('users', 'app', 1), edge('app', 'db', 1)],
     schema: {
@@ -56,7 +56,7 @@ export function buildSharedResource(): DesignDoc {
           checks: [{ name: 'ck_user_account_quota', expr: '`quota` BETWEEN 1 AND 10' }],
         },
         {
-          name: 'client', seedRows: 2000, position: { x: 360, y: 0 }, primaryKey: ['client_id'],
+          name: 'client', seedRows: 2000, position: { x: 288, y: 0 }, primaryKey: ['client_id'],
           columns: [
             col('client_id', INT, { ai: true }),
             col('account_id', INT, { seed: fkRef('user_account', 'account_id') }),
@@ -81,7 +81,7 @@ export function buildSharedResource(): DesignDoc {
         {
           // Composite FK (client_id, account_id) keeps the denormalized account_id consistent with the client's owner (Review 1 section 8.5).
           // A fork can add UNIQUE(active_account_id): the CONSTRAINT strategy, meaningful for quota-1 accounts.
-          name: 'allocation', seedRows: 0, position: { x: 360, y: 300 }, primaryKey: ['allocation_id'],
+          name: 'allocation', seedRows: 0, position: { x: 288, y: 300 }, primaryKey: ['allocation_id'],
           columns: [
             col('allocation_id', BIGINT, { ai: true }),
             col('client_id', INT),
@@ -102,7 +102,7 @@ export function buildSharedResource(): DesignDoc {
           indexes: [{ name: 'ix_allocation_account_status_lease', columns: ['account_id', 'status', 'lease_expires_at'], unique: false }],
         },
         {
-          name: 'operation_event', seedRows: 0, position: { x: 720, y: 300 }, primaryKey: ['event_id'],
+          name: 'operation_event', seedRows: 0, position: { x: 576, y: 300 }, primaryKey: ['event_id'],
           columns: [
             col('event_id', BIGINT, { ai: true }),
             col('account_id', INT),

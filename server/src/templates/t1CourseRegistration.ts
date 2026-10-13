@@ -37,7 +37,7 @@ export function buildCourseRegistration(): DesignDoc {
           uniques: [{ name: 'uq_department_code', columns: ['code'] }],
         },
         {
-          name: 'student', seedRows: 20000, position: { x: 340, y: 0 }, primaryKey: ['student_id'],
+          name: 'student', seedRows: 20000, position: { x: 272, y: 0 }, primaryKey: ['student_id'],
           columns: [
             col('student_id', INT, { ai: true }),
             col('reg_no', char(9), { seed: pattern('2#BCE####') }),
@@ -60,7 +60,7 @@ export function buildCourseRegistration(): DesignDoc {
           foreignKeys: [{ columns: ['dept_id'], refTable: 'department', refColumns: ['dept_id'] }],
         },
         {
-          name: 'course', seedRows: 400, position: { x: 340, y: 300 }, primaryKey: ['course_id'],
+          name: 'course', seedRows: 400, position: { x: 272, y: 300 }, primaryKey: ['course_id'],
           columns: [
             col('course_id', INT, { ai: true }),
             col('code', varchar(10), { seed: pattern('CRS####') }),
@@ -74,7 +74,7 @@ export function buildCourseRegistration(): DesignDoc {
         },
         {
           // Deliberately no index on `slot`: the advisor finds the full scan in search_sections.
-          name: 'section', seedRows: 24000, position: { x: 680, y: 160 }, primaryKey: ['section_id'],
+          name: 'section', seedRows: 24000, position: { x: 544, y: 160 }, primaryKey: ['section_id'],
           columns: [
             col('section_id', INT, { ai: true }),
             col('course_id', INT, { seed: fkRef('course', 'course_id', 'zipf', 1.1) }),
@@ -94,7 +94,7 @@ export function buildCourseRegistration(): DesignDoc {
         {
           // The composite FK (section_id, course_id) is the controlled-redundancy pattern from Review 1 section 8.5:
           // course_id is derivable from section_id, but keeping it here lets UNIQUE(student_id, course_id) forbid two sections of one course.
-          name: 'enrollment', seedRows: 0, position: { x: 1020, y: 160 }, primaryKey: ['student_id', 'section_id'],
+          name: 'enrollment', seedRows: 0, position: { x: 816, y: 160 }, primaryKey: ['student_id', 'section_id'],
           columns: [
             col('student_id', INT),
             col('section_id', INT),

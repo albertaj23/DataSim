@@ -106,10 +106,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-*,
-*::before,
-*::after {
-  border-color: var(--line);
+/* Default border colour. In the base layer so border-accent / border-bad / border-[var(--x)] utilities can override it. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--line);
+  }
 }
 
 ::selection {

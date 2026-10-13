@@ -3,7 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import type { NodeType } from '@datasim/shared';
 import { redo, undo, useDesignStore } from '../../lib/designStore';
 import { useToast } from '../../ui';
-import { FIT, autoLayout } from './layout';
+import { FIT, NODE_H, NODE_W, autoLayout } from './layout';
 import { addNode, duplicateNode, removeItems } from './nodes';
 import { useStudioUi } from './studioUi';
 
@@ -58,7 +58,7 @@ export function useStudioActions() {
 
     const center = (id: string) => {
       const n = useDesignStore.getState().design.nodes.find((x) => x.id === id);
-      if (n) void rf.setCenter(n.position.x + 124, n.position.y + 32, { zoom: Math.max(rf.getZoom(), 0.9), duration: 250 });
+      if (n) void rf.setCenter(n.position.x + NODE_W / 2, n.position.y + NODE_H / 2, { zoom: Math.max(rf.getZoom(), 0.9), duration: 250 });
     };
 
     return { add, duplicate, remove, layout, configure, center, undo, redo };

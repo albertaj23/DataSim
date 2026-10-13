@@ -18,9 +18,9 @@ export function buildFlashSale(): DesignDoc {
     seed: 11,
     nodes: [
       { id: 'users', type: 'users', name: 'Shoppers', position: POS.users, config: { vus: 120, thinkMinMs: 20, thinkMaxMs: 60, thinkDist: 'uniform', pattern: 'spike', durationS: 20, warmupS: 3 } },
-      { id: 'app', type: 'app', name: 'App servers', position: { x: 320, y: 140 }, config: { instances: 2, workers: 32, processingMeanMs: 2, processingJitterMs: 1, poolSize: 16, strategy: 'naive', retry: { max: 3, backoffMs: 5 } } },
-      { id: 'cache', type: 'redis', name: 'Redis cache', position: { x: 680, y: 20 }, config: { ttlS: 10 } },
-      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 680, y: 260 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
+      { id: 'app', type: 'app', name: 'App servers', position: { x: 256, y: 140 }, config: { instances: 2, workers: 32, processingMeanMs: 2, processingJitterMs: 1, poolSize: 16, strategy: 'naive', retry: { max: 3, backoffMs: 5 } } },
+      { id: 'cache', type: 'redis', name: 'Redis cache', position: { x: 544, y: 20 }, config: { ttlS: 10 } },
+      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 544, y: 260 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
     ],
     edges: [edge('users', 'app', 2), edge('app', 'cache', 1), edge('app', 'db', 1)],
     schema: {
@@ -47,7 +47,7 @@ export function buildFlashSale(): DesignDoc {
           ],
         },
         {
-          name: 'orders', seedRows: 0, position: { x: 340, y: 280 }, primaryKey: ['order_id'],
+          name: 'orders', seedRows: 0, position: { x: 272, y: 280 }, primaryKey: ['order_id'],
           columns: [
             col('order_id', BIGINT, { ai: true }),
             col('customer_id', INT),
@@ -58,7 +58,7 @@ export function buildFlashSale(): DesignDoc {
           foreignKeys: [{ columns: ['customer_id'], refTable: 'customer', refColumns: ['customer_id'] }],
         },
         {
-          name: 'order_item', seedRows: 0, position: { x: 340, y: 0 }, primaryKey: ['order_id', 'product_id'],
+          name: 'order_item', seedRows: 0, position: { x: 272, y: 0 }, primaryKey: ['order_id', 'product_id'],
           columns: [
             col('order_id', BIGINT),
             col('product_id', INT),

@@ -20,8 +20,8 @@ export function buildBankTransfers(): DesignDoc {
     seed: 23,
     nodes: [
       { id: 'users', type: 'users', name: 'Tellers', position: POS.users, config: { vus: 100, thinkMinMs: 5, thinkMaxMs: 20, thinkDist: 'uniform', pattern: 'constant', durationS: 20, warmupS: 3 } },
-      { id: 'app', type: 'app', name: 'App server', position: { x: 340, y: 140 }, config: { instances: 1, workers: 64, processingMeanMs: 1, processingJitterMs: 1, poolSize: 32, strategy: 'naive', retry: { max: 5, backoffMs: 5 } } },
-      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 700, y: 140 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
+      { id: 'app', type: 'app', name: 'App server', position: { x: 272, y: 140 }, config: { instances: 1, workers: 64, processingMeanMs: 1, processingJitterMs: 1, poolSize: 32, strategy: 'naive', retry: { max: 5, backoffMs: 5 } } },
+      { id: 'db', type: 'mysql', name: 'MySQL', position: { x: 560, y: 140 }, config: { isolation: 'REPEATABLE READ', lockWaitTimeoutS: 3, maxExecutionTimeMs: 0 } },
     ],
     edges: [edge('users', 'app', 1), edge('app', 'db', 1)],
     schema: {
@@ -36,7 +36,7 @@ export function buildBankTransfers(): DesignDoc {
           checks: [{ name: 'ck_account_balance', expr: '`balance` >= 0' }],
         },
         {
-          name: 'transfer', seedRows: 0, position: { x: 360, y: 0 }, primaryKey: ['transfer_id'],
+          name: 'transfer', seedRows: 0, position: { x: 288, y: 0 }, primaryKey: ['transfer_id'],
           columns: [
             col('transfer_id', BIGINT, { ai: true }),
             col('from_id', INT),
