@@ -1,24 +1,21 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#101B28" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0b0c" />
     <title>DataSim</title>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <script>
       (function () {
         try {
           var t = localStorage.getItem('datasim-theme');
-          var dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.classList.toggle('dark', dark);
+          var light = t === 'light';
+          document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
         } catch (e) {}
       })();
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

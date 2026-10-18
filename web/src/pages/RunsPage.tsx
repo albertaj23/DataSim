@@ -1,204 +1,153 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, ChartNoAxesCombined, Database, GitCompareArrows, History, Radio, Rows3 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Badge, Button, Card } from '../components/ui';
-import { api, type ErrorBody } from '../lib/api';
-import { usePageMeta } from '../lib/shell';
-import type { ExperimentBatch, RunEvent, RunSummary } from '../lib/workspaces';
-import NerdsPage from './NerdsPage';
+import { Activity, GitCompare, RefreshCw, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { isTerminal, type ProjectSummary, type RunKind, type RunStatus, type RunSummary } from '@datasim/shared';
+import { MAX_COMPARE, compareBlockReason, orderForCompare } from '../features/compare/diff';
+import { api, errorMessage } from '../lib/api';
+import { formatMs, formatNumber, relativeTime, shortId } from '../lib/format';
+import { PageContainer, PageHeader } from '../shell/Page';
+import { Button, EmptyState, Pill, Select, Skeleton, StatusDot, TBody, TD, TH, THead, TR, Table, Tooltip, buttonClass, type StatusKind, type Tone } from '../ui';
 
-function message(body: unknown): string {
-  return (body as ErrorBody | undefined)?.message || 'Could not load run history.';
-}
+const ISO: Record<string, string> = { 'READ UNCOMMITTED': 'RU', 'READ COMMITTED': 'RC', 'REPEATABLE READ': 'RR', SERIALIZABLE: 'SER' };
+const KIND_OPTIONS = [{ value: 'all', label: 'All kinds' }, { value: 'LOAD', label: 'Load' }, { value: 'CAPACITY', label: 'Capacity' }, { value: 'STRATEGY_CHILD', label: 'Compare (strategy runs)' }];
+const VERDICT_OPTIONS = [{ value: 'all', label: 'Any verdict' }, { value: 'pass', label: 'Pass' }, { value: 'fail', label: 'Fail' }];
+const STATUS_DOT: Record<RunStatus, { dot: StatusKind; pulse?: boolean }> = {
+  QUEUED: { dot: 'info', pulse: true }, PROVISIONING: { dot: 'info', pulse: true }, WARMING: { dot: 'info', pulse: true }, RUNNING: { dot: 'info', pulse: true }, ANALYZING: { dot: 'info', pulse: true },
+  COMPLETED: { dot: 'ok' }, FAILED: { dot: 'bad' }, CANCELLED: { dot: 'idle' },
+};
+const KIND_TONE: Record<RunKind, Tone> = { LOAD: 'neutral', CAPACITY: 'accent', STRATEGY_CHILD: 'blue' };
 
-function runTone(run: RunSummary): 'green' | 'red' | 'amber' | 'stone' {
-  if (run.status === 'QUEUED' || run.status === 'RUNNING') return 'amber';
-  if (run.status !== 'COMPLETED') return 'red';
-  return (run.summary?.violations ?? 0) > 0 ? 'red' : 'green';
-}
-
-function batchTone(batch: ExperimentBatch): 'green' | 'red' | 'amber' | 'stone' {
-  if (batch.status === 'COMPLETED') return 'green';
-  if (batch.status === 'QUEUED' || batch.status === 'RUNNING') return 'amber';
-  if (batch.status === 'PARTIAL' || batch.status === 'FAILED') return 'red';
-  return 'stone';
+function VerdictCell({ r }: { r: RunSummary }) {
+  if (r.status === 'FAILED') return <Pill tone="red">FAILED</Pill>;
+  if (!isTerminal(r.status)) return <span className="text-faint">-</span>;
+  if (r.sloPass === null) return <span className="text-faint">-</span>;
+  return <Pill tone={r.sloPass ? 'green' : 'red'}>{r.sloPass ? 'PASS' : 'FAIL'}</Pill>;
 }
 
 export default function RunsPage() {
   const [params, setParams] = useSearchParams();
-  const legacyTab = params.get('tab');
-  if (legacyTab) return <NerdsPage />;
-  return <RunHistory onOpenLegacy={() => setParams({ tab: 'runs' })} />;
-}
+  const navigate = useNavigate();
+  const projectId = params.get('projectId') ?? 'all';
+  const kind = params.get('kind') ?? 'all';
+  const verdict = params.get('verdict') ?? 'all';
+  const [runs, setRuns] = useState<RunSummary[] | null>(null);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>(() => (params.get('select') ? [params.get('select')!] : []));
 
-function RunHistory({ onOpenLegacy }: { onOpenLegacy: () => void }) {
-  usePageMeta({ title: 'Runs & evidence', chapter: 'Pinned executions' });
-  const [runs, setRuns] = useState<RunSummary[]>([]);
-  const [batches, setBatches] = useState<ExperimentBatch[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [expandedId, setExpandedId] = useState('');
-  const [events, setEvents] = useState<RunEvent[]>([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [params] = useSearchParams();
-  const requestedRunId = params.get('run');
+  const setFilter = (key: string, value: string) => setParams((p) => { const n = new URLSearchParams(p); if (value === 'all') n.delete(key); else n.set(key, value); n.delete('select'); return n; }, { replace: true });
 
-  async function refresh() {
-    setLoading(true); setError('');
-    try {
-      const [runsResult, batchesResult] = await Promise.all([
-        api.get<RunSummary[]>('/runs'),
-        api.get<ExperimentBatch[]>('/batches'),
-      ]);
-      if (!runsResult.ok) throw new Error(message(runsResult.body));
-      setRuns(runsResult.body);
-      if (!batchesResult.ok) throw new Error(message(batchesResult.body));
-      setBatches(batchesResult.body);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load run history.');
-    } finally { setLoading(false); }
-  }
-  useEffect(() => { void refresh(); }, []);
+  const query = useMemo(() => {
+    const q = new URLSearchParams();
+    if (projectId !== 'all') q.set('projectId', projectId);
+    if (kind !== 'all') q.set('kind', kind);
+    if (verdict !== 'all') q.set('verdict', verdict);
+    const s = q.toString();
+    return s ? `?${s}` : '';
+  }, [projectId, kind, verdict]);
+
+  const load = useCallback(async () => {
+    const res = await api.get<RunSummary[]>(`/runs${query}`);
+    if (res.ok) { setRuns(res.body); setError(null); } else setError(errorMessage(res));
+  }, [query]);
+
+  useEffect(() => { setRuns(null); void load(); }, [load]);
+  useEffect(() => { void api.get<ProjectSummary[]>('/projects').then((r) => { if (r.ok) setProjects(r.body); }); }, []);
+  // Runs in progress refresh themselves.
+  const live = !!runs?.some((r) => !isTerminal(r.status));
   useEffect(() => {
-    const runId = requestedRunId;
-    if (!runId) return;
-    let live = true;
-    async function openRequestedRun(id: string) {
-      const [runResult, eventResult] = await Promise.all([
-        api.get<RunSummary>(`/runs/${id}`),
-        api.get<RunEvent[]>(`/runs/${id}/events`),
-      ]);
-      if (!live) return;
-      if (!runResult.ok) { setError(message(runResult.body)); return; }
-      if (!eventResult.ok) { setError(message(eventResult.body)); return; }
-      setRuns((current) => current.some((run) => run.id === id) ? current : [runResult.body, ...current]);
-      setExpandedId(id);
-      setEvents(eventResult.body);
-    }
-    void openRequestedRun(runId).catch((caught: unknown) => {
-      if (live) setError(caught instanceof Error ? caught.message : 'Could not load the selected run.');
-    });
-    return () => { live = false; };
-  }, [requestedRunId]);
+    if (!live) return;
+    const t = setInterval(() => void load(), 2500);
+    return () => clearInterval(t);
+  }, [live, load]);
 
-  const selected = useMemo(() => selectedIds.map((id) => runs.find((run) => run.id === id)).filter((run): run is RunSummary => Boolean(run)), [selectedIds, runs]);
-  const comparable = selected.length === 2
-    && selected[0]!.workspaceId === selected[1]!.workspaceId
-    && selected[0]!.revisionHash === selected[1]!.revisionHash
-    && selected[0]!.runMode === selected[1]!.runMode
-    && selected[0]!.engine === selected[1]!.engine
-    && selected[0]!.engineVersion === selected[1]!.engineVersion
-    && selected[0]!.configuration.concurrency === selected[1]!.configuration.concurrency;
+  const byId = useMemo(() => new Map((runs ?? []).map((r) => [r.runId, r])), [runs]);
+  const chosen = selected.map((id) => byId.get(id)).filter((r): r is RunSummary => !!r);
+  const block = compareBlockReason(chosen);
+  const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= MAX_COMPARE ? s : [...s, id]));
+  // A "Compare strategies" batch parent has no metrics: it links to the comparison of its child runs (when they are in this list).
+  const batchIds = (parentId: string) => orderForCompare((runs ?? []).filter((c) => c.parentRunId === parentId && c.status === 'COMPLETED')).slice(0, MAX_COMPARE).map((c) => c.runId);
+  const filtered = projectId !== 'all' || kind !== 'all' || verdict !== 'all';
+  const projectOptions = [{ value: 'all', label: 'All projects' }, ...projects.map((p) => ({ value: p.projectId, label: p.name }))];
+  if (projectId !== 'all' && !projects.some((p) => p.projectId === projectId)) projectOptions.push({ value: projectId, label: shortId(projectId) });
 
-  async function toggleCompare(id: string) {
-    setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current.slice(-1), id]);
-  }
-
-  async function showEvents(id: string) {
-    if (expandedId === id) { setExpandedId(''); return; }
-    setExpandedId(id);
-    const result = await api.get<RunEvent[]>(`/runs/${id}/events`);
-    if (!result.ok) setError(message(result.body));
-    else setEvents(result.body);
-  }
+  const compareBtn = (
+    <Button variant="primary" icon={<GitCompare size={14} />} disabled={block !== null} onClick={() => navigate(`/compare?ids=${orderForCompare(chosen).map((r) => r.runId).join(',')}`)} data-testid="compare-btn">
+      Compare{chosen.length > 0 ? ` (${chosen.length})` : ''}
+    </Button>
+  );
 
   return (
-    <div className="workbench-page space-y-6">
-      <header className="workbench-header">
-        <div><p className="workbench-eyebrow"><History size={14} /> RUN HISTORY / EVIDENCE</p><h1>Execution record</h1><p className="workbench-lede">Every generic run points to an immutable workspace revision and labels database observations separately from derived checks.</p></div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => void refresh()}>Refresh</Button>
-          <Button onClick={onOpenLegacy}><Rows3 size={15} /> Legacy runs & evidence</Button>
-          <Link to="/workspaces" className="workbench-action">Open workspaces <ArrowUpRight size={14} /></Link>
-        </div>
-      </header>
-      {error && <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</div>}
-      {selected.length === 2 && <section className="workbench-panel space-y-4 p-4" aria-labelledby="compare-title">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="workbench-eyebrow"><GitCompareArrows size={13} /> COMPARISON</p><h2 id="compare-title" className="font-semibold">Selected run comparison</h2></div>
-          <button className="text-xs text-stone-400 underline" onClick={() => setSelectedIds([])}>Clear selection</button>
-        </div>
-        {!comparable ? <p role="status" className="text-sm text-amber-200">These runs use different workspace revisions and are not directly comparable. Select two runs pinned to the same workspace revision.</p> : <>
-          <div className="grid gap-3 md:grid-cols-2">{selected.map((run) => <div key={run.id} className="rounded-lg border border-fg/8 p-3">
-            <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">r{run.revision} · {run.configuration.isolation}</span><Badge tone={runTone(run)}>{run.status}</Badge></div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-stone-400">
-              <span>Mode: {run.runMode}</span><span>Trials: {run.summary?.trials ?? run.configuration.trials}</span>
-              <span>Violations: {run.summary?.violations ?? '—'}</span><span>p95: {run.summary?.p95Ms == null ? '—' : `${run.summary.p95Ms} ms`}</span>
-            </div>
-          </div>)}</div>
-          {selected.every((run) => run.summary) && <div className="grid gap-4 md:grid-cols-2">
-            {(['p95Ms', 'violations'] as const).map((metric) => {
-              const comparisons = selected.map((run) => ({
-                run,
-                value: metric === 'p95Ms' ? run.summary!.p95Ms : run.summary!.violations,
-              }));
-              const maximum = Math.max(1, ...comparisons.map(({ value }) => value ?? 0));
-              const label = metric === 'p95Ms' ? 'p95 actor latency' : 'Invariant violations';
-              const unit = metric === 'p95Ms' ? 'ms' : 'violations';
-              return <figure key={metric} className="rounded-lg border border-fg/8 p-3">
-                <figcaption className="mb-3 text-sm font-medium">{label} <span className="text-xs text-stone-500">({unit}; one value per run)</span></figcaption>
-                <div role="img" aria-label={`${label} comparison: ${comparisons.map(({ run, value }) => `${run.configuration.isolation}, ${value === null ? 'not recorded' : `${value} ${unit}`}, n=${run.summary?.trials}`).join('; ')}`} className="space-y-3">
-                  {comparisons.map(({ run, value }) => <div key={run.id}>
-                    <div className="mb-1 flex justify-between gap-2 text-xs"><span className="truncate">{run.configuration.isolation}</span><span>{value === null ? 'not recorded' : `${value} ${unit}`} · n={run.summary?.trials}</span></div>
-                    <div className="h-2 overflow-hidden rounded-full bg-fg/10"><div className={`h-full rounded-full ${metric === 'violations' && value ? 'bg-rose-400' : 'bg-sky-300'}`} style={{ width: `${value === null ? 0 : Math.max(value ? 4 : 0, value / maximum * 100)}%` }} /></div>
-                  </div>)}
-                </div>
-                <table className="sr-only"><caption>{label} comparison data</caption><thead><tr><th>Isolation</th><th>Value ({unit})</th><th>Sample count</th></tr></thead><tbody>{comparisons.map(({ run, value }) => <tr key={run.id}><td>{run.configuration.isolation}</td><td>{value ?? 'not recorded'}</td><td>{run.summary?.trials}</td></tr>)}</tbody></table>
-              </figure>;
-            })}
-          </div>}
-          <p className="text-[11px] text-stone-500">Run mode: {selected[0]!.runMode}; actors: {selected[0]!.configuration.concurrency ?? 'legacy default'}. Comparisons require the same revision, engine/version, mode, and actor count. Latency is total actor execution time per trial, not a production service SLO. Failed runs may retain completed-trial summaries; missing metrics remain unavailable.</p>
+    <PageContainer>
+      <PageHeader
+        title="Runs"
+        description="Every load and capacity run with its verdict. Select two to five completed runs of one project to compare."
+        actions={<>
+          {selected.length > 0 && <Button variant="ghost" size="sm" icon={<X size={14} />} onClick={() => setSelected([])}>Clear</Button>}
+          {block ? <Tooltip content={block}><span tabIndex={0}>{compareBtn}</span></Tooltip> : compareBtn}
         </>}
-      </section>}
+      />
 
-      {batches.length > 0 && <section className="space-y-3" aria-labelledby="batch-history-title">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div><p className="workbench-eyebrow"><ChartNoAxesCombined size={13} /> CONCURRENCY / ISOLATION MATRICES</p><h2 id="batch-history-title" className="text-xl font-semibold">Experiment batches</h2></div>
-          <span className="text-xs text-stone-500">{batches.length} recent batch(es)</span>
-        </div>
-        <div className="space-y-2">{batches.map((batch) => <article key={batch.id} className="workbench-panel flex flex-wrap items-center gap-3 p-3">
-          <Badge tone={batchTone(batch)}>{batch.status}</Badge>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{batch.workspaceName} · r{batch.revision}</p>
-            <p className="mt-1 font-mono text-[10px] text-stone-500">{batch.configuration.concurrencies.join(' / ')} actors · {batch.configuration.isolationLevels.join(', ')} · {batch.configuration.runMode} · {batch.engine} {batch.engineVersion}</p>
-          </div>
-          <span className="text-xs tabular-nums text-stone-400">{batch.finishedCells}/{batch.totalCells} finished · {batch.completedCells} completed · {batch.configuration.trials} trials/cell</span>
-          <Link to={`/workspaces/${batch.workspaceId}?section=run&batch=${encodeURIComponent(batch.id)}`} className="workbench-action">Open batch evidence <ArrowUpRight size={13} /></Link>
-        </article>)}</div>
-      </section>}
+      <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filters">
+        <div className="w-[220px]"><Select aria-label="Project" value={projectId} onValueChange={(v) => setFilter('projectId', v)} options={projectOptions} /></div>
+        <div className="w-[150px]"><Select aria-label="Kind" value={kind} onValueChange={(v) => setFilter('kind', v)} options={KIND_OPTIONS} /></div>
+        <div className="w-[140px]"><Select aria-label="Verdict" value={verdict} onValueChange={(v) => setFilter('verdict', v)} options={VERDICT_OPTIONS} /></div>
+        {filtered && <Button variant="ghost" size="sm" onClick={() => setParams({}, { replace: true })}>Clear filters</Button>}
+        <span className="ml-auto text-xs text-faint">{runs ? `${runs.length}${runs.length === 200 ? '+' : ''} runs` : ''}{live ? ' · live' : ''}</span>
+      </div>
 
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3"><div><p className="workbench-eyebrow">LOCAL / MYSQL INNODB</p><h2 className="text-xl font-semibold">Saved runs</h2></div><span className="text-xs text-stone-500">{runs.length} run(s)</span></div>
-        {loading ? <div className="workbench-empty">Loading run records…</div> : runs.length === 0 ? <div className="workbench-empty"><ChartNoAxesCombined size={30} /><h3>No saved runs yet</h3><p>Open a workspace, validate its scenario, then run it against MySQL.</p><Link to="/workspaces" className="workbench-action mt-3">Choose a workspace →</Link></div> :
-          <div className="space-y-3">{runs.map((run) => <Card key={run.id} className="workbench-card" padded={false}>
-            <div className="grid gap-3 p-4 lg:grid-cols-[1fr_auto]">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2"><Badge tone={runTone(run)}>{run.status}</Badge><Badge tone="sky">{run.runMode.replaceAll('_', ' ')}</Badge><span className="font-mono text-xs text-stone-400">r{run.revision} · {run.revisionHash.slice(0, 12)}</span></div>
-                <h3 className="mt-2 truncate font-semibold">{run.workspaceId}</h3>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
-                  <span className="inline-flex items-center gap-1"><Database size={12} /> {run.engine} {run.engineVersion}</span>
-                  <span>{run.configuration.isolation}</span><span>{run.configuration.concurrency ?? 'legacy actor count'} actors</span><span>seed {run.seed}</span>
-                  <span>{run.summary?.trials ?? run.configuration.trials} trial(s)</span>
-                  <span>{new Date(run.createdAt).toLocaleString()}</span>
-                </p>
-                {run.summary && <p className="mt-2 text-sm text-stone-300">{run.summary.violations} invariant violation(s) across {run.summary.invariantChecks} checks · p95 {run.summary.p95Ms == null ? 'not recorded' : `${run.summary.p95Ms} ms`}{run.summary.partial ? ` · partial summary (${run.summary.trials} completed trial(s))` : ''}</p>}
-                {run.error && <p className="mt-2 text-sm text-rose-300">{run.error}</p>}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 text-xs text-stone-400"><input type="checkbox" checked={selectedIds.includes(run.id)} onChange={() => void toggleCompare(run.id)} aria-label={`Compare run ${run.id}`} /> Compare</label>
-                <Button size="sm" onClick={() => void showEvents(run.id)} aria-expanded={expandedId === run.id}><Radio size={13} /> {expandedId === run.id ? 'Hide trace' : 'Trace'}</Button>
-                <Link to={`/workspaces/${run.workspaceId}`} className="workbench-action">Workspace →</Link>
-              </div>
-            </div>
-            {expandedId === run.id && <div className="border-t border-fg/8 px-4 py-3">
-              <p className="workbench-eyebrow mb-2">EVENT TRACE · OBSERVATIONS AND DERIVED METRICS ARE LABELLED</p>
-              <ol className="max-h-80 space-y-1 overflow-y-auto">{events.map((event) => <li key={event.sequence} className="grid gap-1 rounded-md bg-black/10 px-2 py-1.5 text-xs sm:grid-cols-[130px_1fr_auto]">
-                <span className="font-mono text-sky-200">{event.type}</span><span className="break-all text-stone-300">{event.actorId ?? JSON.stringify(event.payload)}</span><Badge tone={event.source === 'DBMS_OBSERVED' ? 'sky' : 'amber'}>{event.source}</Badge>
-                {event.sql && <code className="col-span-full break-all text-[10px] text-stone-500">{event.sql}</code>}
-              </li>)}</ol>
-              {!events.length && <p className="text-xs text-stone-500">No events recorded.</p>}
-            </div>}
-          </Card>)}</div>}
-      </section>
-    </div>
+      {error ? (
+        <EmptyState icon={<Activity size={20} />} title="Could not load runs" description={error} actions={<Button icon={<RefreshCw size={14} />} onClick={() => void load()}>Retry</Button>} />
+      ) : runs === null ? (
+        <div className="flex flex-col gap-1.5" aria-busy="true" aria-label="Loading runs">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-8 w-full rounded-md" />)}</div>
+      ) : runs.length === 0 ? (
+        <EmptyState
+          icon={<Activity size={20} />}
+          title={filtered ? 'No runs match these filters' : 'No runs yet'}
+          description={filtered ? 'Loosen a filter to see more runs.' : 'Open a project in the Studio and start a load test. Runs appear here as soon as they are queued.'}
+          actions={filtered ? <Button onClick={() => setParams({}, { replace: true })}>Clear filters</Button> : <Link to="/" className={buttonClass('primary', 'md')}>Go to projects</Link>}
+        />
+      ) : (
+        <Table data-testid="runs-table">
+          <THead>
+            <TR>
+              <TH className="w-9"><span className="sr-only">Select</span></TH>
+              <TH>Started</TH><TH>Project</TH><TH>Kind</TH><TH>Strategy</TH><TH>Isolation</TH>
+              <TH align="right">VUs</TH><TH align="right">TPS</TH><TH align="right">p95</TH><TH align="right">Errors</TH><TH align="right">Violations</TH><TH>Verdict</TH><TH>Status</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {runs.map((r) => {
+              const isCompare = r.strategy === 'compare';
+              const done = isTerminal(r.status);
+              const sel = selected.includes(r.runId);
+              const st = STATUS_DOT[r.status];
+              return (
+                <TR key={r.runId} interactive selected={sel} onClick={() => navigate(isCompare && batchIds(r.runId).length >= 2 ? `/compare?ids=${batchIds(r.runId).join(',')}` : `/runs/${r.runId}`)} data-testid="run-row" data-run-id={r.runId}>
+                  <TD onClick={(e) => e.stopPropagation()}>
+                    {!isCompare && <input
+                      type="checkbox" className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent)] disabled:cursor-not-allowed" aria-label={`Select run ${shortId(r.runId)}`}
+                      checked={sel} disabled={!sel && selected.length >= MAX_COMPARE} onChange={() => toggle(r.runId)}
+                    />}
+                  </TD>
+                  <TD className="whitespace-nowrap text-muted" title={r.startedAt ?? undefined}>{r.startedAt ? relativeTime(r.startedAt) : 'queued'}</TD>
+                  <TD className="max-w-[240px]" title={r.projectName}><span className="flex items-baseline gap-1.5"><span className="min-w-0 truncate">{r.projectName ?? shortId(r.projectId)}</span><span className="shrink-0 font-mono text-[11px] text-faint">rev {r.revisionNo}</span></span></TD>
+                  <TD>{isCompare ? <Tooltip content="A Compare strategies batch: one short child run per strategy"><span><Pill tone="blue">batch</Pill></span></Tooltip> : <Pill tone={KIND_TONE[r.kind]}>{r.kind === 'STRATEGY_CHILD' ? 'compare' : r.kind.toLowerCase()}</Pill>}</TD>
+                  <TD mono>{isCompare ? (batchIds(r.runId).length >= 2 ? <Link to={`/compare?ids=${batchIds(r.runId).join(',')}`} onClick={(e) => e.stopPropagation()} className="text-accent hover:underline">{batchIds(r.runId).length} runs</Link> : <span className="text-faint">batch</span>) : r.strategy}</TD>
+                  <TD mono><Tooltip content={r.isolation}><span>{ISO[r.isolation] ?? r.isolation}</span></Tooltip></TD>
+                  <TD align="right" mono>{isCompare ? '-' : r.vus}</TD>
+                  <TD align="right" mono>{done && !isCompare ? formatNumber(r.tpsAvg) : '-'}</TD>
+                  <TD align="right" mono>{done && !isCompare ? formatMs(r.p95Ms) : '-'}</TD>
+                  <TD align="right" mono className={r.errored > 0 ? 'text-bad' : undefined}>{done && !isCompare ? formatNumber(r.errored) : '-'}</TD>
+                  <TD align="right" mono className={r.invariantViolations > 0 ? 'text-bad' : undefined}>{done && !isCompare ? formatNumber(r.invariantViolations) : '-'}</TD>
+                  <TD>{isCompare ? <span className="text-faint">-</span> : <VerdictCell r={r} />}</TD>
+                  <TD><span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted"><StatusDot status={st.dot} pulse={st.pulse} />{r.status.toLowerCase()}</span></TD>
+                </TR>
+              );
+            })}
+          </TBody>
+        </Table>
+      )}
+    </PageContainer>
   );
 }

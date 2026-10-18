@@ -1,0 +1,12 @@
+import {launch,BASE,sleep,idle} from './lib.mjs';
+import fs from 'node:fs';
+const pid=fs.readFileSync('.datasim-v2/review/pid.txt','utf8');
+const {page,shot,done}=await launch();
+await page.goto(BASE+'p/'+pid); await sleep(2000);
+await page.getByTestId('node-users').dblclick(); await sleep(1200);
+await page.getByRole('tab',{name:'naive',exact:true}).click(); await sleep(600); await shot('21-workload-naive');
+await page.getByRole('button',{name:'Test once'}).click(); await sleep(3000); await shot('22-workload-testonce');
+console.log(await page.locator('body').innerText().then(t=>t.slice(t.indexOf('TEST ONCE'),t.indexOf('TEST ONCE')+900)));
+await page.getByRole('tab',{name:/Invariants/}).click(); await sleep(800); await shot('23-workload-invariants');
+console.log(await page.locator('body').innerText().then(t=>t.slice(t.indexOf('Invariants')+10,t.indexOf('Invariants')+1200)));
+await done('s6');

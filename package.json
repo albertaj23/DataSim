@@ -1,9 +1,10 @@
 {
   "name": "datasim",
   "private": true,
-  "version": "0.1.0",
-  "description": "A friendly database simulation lab for concurrency, transactions, and scale.",
+  "version": "0.2.0",
+  "description": "DataSim: a design-and-load-test studio for database engineers.",
   "workspaces": [
+    "shared",
     "server",
     "web"
   ],
@@ -15,14 +16,21 @@
     "dev": "concurrently -n server,web -c blue,magenta \"npm -w server run dev\" \"npm -w web run dev\"",
     "dev:server": "npm -w server run dev",
     "dev:web": "npm -w web run dev",
-    "test": "npm -w server run test && npm -w web run test",
-    "typecheck": "npm -w server run typecheck && npm -w web run typecheck",
-    "bench": "tsx scripts/bench.ts"
+    "test": "npm -w shared run test && npm -w server run test && npm -w web run test",
+    "typecheck": "npm -w shared run typecheck && npm -w server run typecheck && npm -w web run typecheck",
+    "bench": "tsx scripts/bench.ts",
+    "demo": "tsx scripts/demo.ts",
+    "doctor": "tsx scripts/doctor.ts",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "demo:prime": "tsx scripts/demoPrime.ts",
+    "build": "npm -w web run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "@playwright/test": "^1.48.0"
   },
   "engines": {
     "node": ">=20"

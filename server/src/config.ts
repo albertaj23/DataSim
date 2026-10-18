@@ -22,6 +22,8 @@ const EnvSchema = z.object({
   DEFAULT_STRATEGY: z.enum(STRATEGIES).default('PESSIMISTIC'),
   APP_POOL_SIZE: z.coerce.number().int().positive().default(20),
   REDIS_URL: z.string().default('redis://127.0.0.1:6380'),
+  RUNNER_USER: z.string().default('dsim_runner'),
+  RUNNER_PASSWORD: z.string().default('dsim_runner_pw'),
   LAB_POOL_SIZE: z.coerce.number().int().positive().default(120),
 });
 

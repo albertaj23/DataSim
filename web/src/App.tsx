@@ -1,79 +1,81 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
-import { MotionConfig } from 'motion/react';
-import { Mascot } from './components/Mascot';
-import { AppShell } from './components/shell/AppShell';
+import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Monitor } from 'lucide-react';
 import { ThemeProvider } from './lib/theme';
-import { ToastProvider } from './lib/toast';
-import { recall, remember, restoreScroll } from './lib/scrollMemory';
-import DevicesPage from './pages/devices/DevicesPage';
+import { ErrorBoundary } from './shell/ErrorBoundary';
+import { PageSkeleton } from './shell/Page';
+import { Rail } from './shell/Rail';
+import { CommandPaletteProvider } from './features/tier2/CommandPalette';
+import { EmptyState, ToastProvider, TooltipProvider } from './ui';
 
-const DevicePage = lazy(() => import('./pages/DevicePage'));
-const WorkspacesPage = lazy(() => import('./pages/WorkspacesPage'));
-const WorkspacePage = lazy(() => import('./pages/WorkspacePage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const StudioPage = lazy(() => import('./pages/StudioPage'));
 const RunsPage = lazy(() => import('./pages/RunsPage'));
-const StressTestPage = lazy(() => import('./pages/StressTestPage'));
-const SimPage = lazy(() => import('./components/sim/SimPage'));
+const RunReportPage = lazy(() => import('./pages/RunReportPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const LabPage = lazy(() => import('./pages/LabPage'));
+const StepperPage = lazy(() => import('./pages/StepperPage'));
+const KitPage = lazy(() => import('./pages/KitPage'));
 
-if (typeof history !== 'undefined') history.scrollRestoration = 'manual';
-
-/** Route wrapper: CSS enter animation (ends at transform:none), scroll memory, hash jumps, focus to the heading. */
-function Page({ children }: { children: ReactNode }) {
-  const { pathname, hash, key } = useLocation();
-  const navType = useNavigationType();
-  const ref = useRef<HTMLDivElement>(null);
-  const nav = useRef({ key, navType, hash });
-  nav.current = { key, navType, hash };
-  // Runs per page (pathname), not per hash: hash changes inside a story are handled by <Story>.
-  useLayoutEffect(() => {
-    const { key: k, navType: t, hash: h } = nav.current;
-    const saved = t === 'POP' ? recall(k) : null;
-    if (saved !== null) restoreScroll(saved);
-    else if (h) requestAnimationFrame(() => document.getElementById(h.slice(1))?.scrollIntoView());
-    else window.scrollTo(0, 0);
-    return () => remember(k, window.scrollY);
-  }, [pathname]);
+const MIN_WIDTH = 1024;
+function useIsDesktop() {
+  const [ok, setOk] = useState(() => window.innerWidth >= MIN_WIDTH);
   useEffect(() => {
-    const h1 = ref.current?.querySelector('h1');
-    if (h1) { h1.setAttribute('tabindex', '-1'); h1.focus({ preventScroll: true }); }
-  }, [pathname]);
-  return <div ref={ref} key={pathname} className="page-content route-enter">{children}</div>;
+    const mq = window.matchMedia(`(min-width: ${MIN_WIDTH}px)`);
+    const on = () => setOk(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return ok;
 }
 
-/** Keep report links and old bookmarks working while the product moves to run-scoped evidence. */
-function LegacyEvidenceRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/runs${search}`} replace />;
+/** Each route gets its own error boundary (reset on navigation) and a skeleton while its chunk loads. */
+function Screen({ children }: { children: ReactElement }) {
+  const { pathname } = useLocation();
+  return (
+    <ErrorBoundary resetKey={pathname}>
+      <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {
+  const desktop = useIsDesktop();
   return (
     <ThemeProvider>
-      <MotionConfig reducedMotion="user">
+      <TooltipProvider>
         <ToastProvider>
-          <AppShell>
-            <Suspense fallback={<div className="grid place-items-center py-20"><Mascot mood="sleepy" size={90} /></div>}>
-              <Routes>
-                <Route path="/" element={<Page><WorkspacesPage /></Page>} />
-                <Route path="/workspaces" element={<Page><WorkspacesPage /></Page>} />
-                <Route path="/workspaces/:id" element={<Page><WorkspacePage /></Page>} />
-                <Route path="/templates" element={<Page><WorkspacesPage templatesOnly /></Page>} />
-                <Route path="/scenarios" element={<Navigate to="/templates" replace />} />
-                <Route path="/runs" element={<Page><RunsPage /></Page>} />
-                <Route path="/devices" element={<Page><DevicesPage /></Page>} />
-                <Route path="/device" element={<Page><DevicePage /></Page>} />
-                <Route path="/stress" element={<Page><StressTestPage /></Page>} />
-                <Route path="/sim" element={<Page><SimPage /></Page>} />
-                <Route path="/nerds" element={<LegacyEvidenceRedirect />} />
-                <Route path="/playground" element={<Navigate to="/devices" replace />} />
-                <Route path="/wall" element={<Navigate to="/devices" replace />} />
-                <Route path="/race" element={<Navigate to="/stress" replace />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </AppShell>
+          <CommandPaletteProvider>
+          {desktop ? (
+            <div className="flex h-full">
+              <Rail />
+              {/* Pages scroll inside <main>; the Studio fills it edge to edge and manages its own scrolling. */}
+              <main className="min-w-0 flex-1 overflow-auto">
+                <Routes>
+                  <Route path="/" element={<Screen><ProjectsPage /></Screen>} />
+                  <Route path="/p/:id" element={<Screen><StudioPage /></Screen>} />
+                  <Route path="/runs" element={<Screen><RunsPage /></Screen>} />
+                  <Route path="/runs/:id" element={<Screen><RunReportPage /></Screen>} />
+                  <Route path="/compare" element={<Screen><ComparePage /></Screen>} />
+                  <Route path="/lab" element={<Screen><LabPage /></Screen>} />
+                  <Route path="/stepper" element={<Screen><StepperPage /></Screen>} />
+                  <Route path="/_kit" element={<Screen><KitPage /></Screen>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+          ) : (
+            <div className="flex h-full items-center justify-center p-4">
+              <EmptyState
+                icon={<Monitor size={20} />}
+                title="Best viewed on a desktop"
+                description={`DataSim needs a window at least ${MIN_WIDTH}px wide. Widen this window or open it on a larger screen.`}
+              />
+            </div>
+          )}
+          </CommandPaletteProvider>
         </ToastProvider>
-      </MotionConfig>
+      </TooltipProvider>
     </ThemeProvider>
   );
 }

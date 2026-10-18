@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from 'express';
 import { ZodError } from 'zod';
 import { isFkViolation } from '../db/errors.js';
-import { ServiceError, SessionLostError } from '../services/playback.js';
+import { ServiceError } from '../services/liveStrategy.js';
 
 /** Express 4 does not catch rejected promises; forward them to the error handler. */
 export const asyncHandler =
@@ -11,11 +11,6 @@ export const asyncHandler =
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
     res.status(400).json({ code: 'BAD_REQUEST', issues: err.issues });
-  } else if (err instanceof SessionLostError) {
-    res.status(410).json({
-      code: 'SESSION_LOST', reason: err.reason,
-      ...(err.byDeviceName ? { byDeviceName: err.byDeviceName } : {}),
-    });
   } else if (err instanceof ServiceError) {
     res.status(err.status).json({ code: err.code, message: err.message, ...err.extra });
   } else if (isFkViolation(err)) {

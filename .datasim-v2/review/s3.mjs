@@ -1,0 +1,20 @@
+import {launch,BASE,sleep} from './lib.mjs';
+import fs from 'node:fs';
+const pid=fs.readFileSync('.datasim-v2/review/pid.txt','utf8');
+const {page,shot,done}=await launch({deviceScaleFactor:2});
+await page.goto(BASE+'p/'+pid); await sleep(2000);
+await page.screenshot({path:'.datasim-v2/review/screens/05-canvas-zoom.png',clip:{x:280,y:200,width:880,height:260}});
+// drag users -> mysql
+const u=await page.getByTestId('node-users').boundingBox(); const m=await page.getByTestId('node-mysql').boundingBox();
+console.log(u,m);
+await page.mouse.move(u.x+u.width/2,u.y+u.height/2); await sleep(300);
+const handles=await page.locator('.react-flow__handle.source').evaluateAll(hs=>hs.map(h=>{const r=h.getBoundingClientRect();return [r.x,r.y,r.width,r.height,h.closest('[data-id]')?.getAttribute('data-id')]}));
+console.log(handles);
+const h=handles.find(x=>x[4]&&/users/.test(x[4]))||handles[0];
+await page.mouse.move(h[0]+h[2]/2,h[1]+h[3]/2); await page.mouse.down();
+await page.mouse.move(m.x+m.width/2,m.y+m.height/2,{steps:15}); await sleep(300);
+await shot('06-drag-invalid-during');
+await page.mouse.up(); await sleep(600); await shot('07-drag-invalid-toast');
+console.log(await page.locator('[role=status], [data-sonner-toast], .toast, [role=alert]').allInnerTexts());
+console.log('edges',await page.locator('.react-flow__edge').count());
+await done('s3');

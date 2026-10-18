@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DataSim: project explainer</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1b1b1f; margin: 0; }
+  h1 { font-size: 26pt; margin: 0 0 4px; letter-spacing: -0.5px; }
+  h2 { font-size: 15pt; margin: 26px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #0f9d8a; page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 16px 0 4px; color: #0b6b5e; page-break-after: avoid; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0 6px 20px; padding: 0; }
+  li { margin: 3px 0; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9.2pt; background: #f1f3f4; padding: 1px 4px; border-radius: 3px; }
+  pre { font-family: Consolas, monospace; font-size: 8.6pt; background: #f1f3f4; padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; margin: 8px 0; }
+  .cover { height: 245mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover .tag { color: #0f9d8a; font-weight: 700; letter-spacing: 2px; font-size: 10pt; text-transform: uppercase; }
+  .cover .sub { font-size: 14pt; color: #444; margin: 8px 0 28px; max-width: 150mm; }
+  .cover .meta { color: #666; font-size: 10pt; margin-top: 30px; }
+  .box { border: 1px solid #cfd8dc; border-left: 4px solid #0f9d8a; background: #f7fbfa; padding: 8px 12px; margin: 10px 0; border-radius: 4px; page-break-inside: avoid; }
+  .box.warn { border-left-color: #e08a00; background: #fffaf0; }
+  .box b.t { display: block; margin-bottom: 2px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.6pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cfd8dc; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #eef4f3; }
+  figure { margin: 10px 0 14px; page-break-inside: avoid; }
+  figure img { width: 84%; margin: 0 auto; border: 1px solid #263238; border-radius: 6px; display: block; }
+  .cols figure img { width: 100%; }
+  figcaption { font-size: 9pt; color: #555; margin-top: 4px; text-align: center; }
+  .cols { display: flex; gap: 12px; } .cols > div { flex: 1; }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; page-break-inside: avoid; }
+  .flow .n { border: 1.5px solid #0f9d8a; border-radius: 6px; padding: 6px 9px; background: #f2fbf9; font-weight: 600; font-size: 9.5pt; text-align: center; }
+  .flow .n small { display: block; font-weight: 400; color: #555; font-size: 8pt; }
+  .flow .a { color: #0f9d8a; font-weight: 700; }
+  .pill { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 8.5pt; font-weight: 700; border: 1px solid; }
+  .m { color: #0a7a3b; border-color: #0a7a3b; } .e { color: #8a5a00; border-color: #c88a00; } .p { color: #1f5fbf; border-color: #1f5fbf; }
+  .pb { page-break-before: always; }
+  .small { font-size: 9pt; color: #555; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="tag">Database Management Systems project</div>
+  <h1>DataSim</h1>
+  <div class="sub">A design-and-load-test studio for database engineers: Cisco Packet Tracer, but for databases.</div>
+  <p style="max-width:150mm">Explainer document: what the project is, why it exists, what every part does, how it was built, how it works inside, what it shows, and how to answer questions about it.</p>
+  <div class="meta">
+    Akshat Raj (24BCE0043) &nbsp;·&nbsp; Vishal Vivek (24BCE2377) &nbsp;·&nbsp; Mohit Kumar (24BCE2378)<br>
+    Engine: MySQL 8.4 / InnoDB &nbsp;·&nbsp; Node.js + TypeScript + React &nbsp;·&nbsp; Redis 7 &nbsp;·&nbsp; Docker
+  </div>
+</section>
+
+<h2 style="margin-top:0">1. The project in one minute</h2>
+<p><b>The one-line answer:</b> DataSim lets you <i>design</i> a database-backed system on a canvas (users, load balancer, app servers, cache, database), <i>define</i> the tables and the transactions, and then <i>run it for real</i> against an actual MySQL server with hundreds of simulated users, to see whether it is fast enough, whether the data stays correct, and exactly where it breaks, before anyone builds the real system.</p>
+<p>The idea comes from <b>Cisco Packet Tracer</b>, where network students drag routers and switches onto a canvas and watch packets flow. DataSim does the same for databases: you drag components, press <b>Run</b>, and watch requests flow along the connections while charts, locks, errors and invariant checks update live.</p>
+
+<div class="box"><b class="t">Why does this matter? (the problem we solve)</b>
+Everyone learns that a database is "ACID" and has "isolation levels". Very few people ever <i>see</i> what goes wrong when 200 people use the system at the same moment. Example: 60 seats in a course, 200 students press "register" together. A careless implementation (<code>read seats, check, then write seats+1</code>) lets two students both see "59 seats used", both register, and the course ends up with 61 students. The count and reality disagree: a <b>lost update</b>. It happens even though every individual transaction "committed successfully". DataSim reproduces this on demand, shows the wrong numbers, then shows the fix working.</div>
+
+<h3>The five questions DataSim answers with evidence</h3>
+<ol>
+  <li><b>Capacity:</b> Will this schema and topology handle N users? At what load does it break? (capacity test + pass/fail verdict against a target such as "p95 under 200 ms")</li>
+  <li><b>Latency:</b> What response time does each transaction see (p50 / p95 / p99), and <i>where is the time spent</i>: waiting in the app queue, the network, waiting for a database connection, or executing in the database?</li>
+  <li><b>Correctness:</b> Is the data still correct under concurrency? (SQL "invariants" such as "no course has more students than seats")</li>
+  <li><b>What-if:</b> What changes if I add an index, a cache, more app servers, a bigger connection pool, another isolation level or another concurrency-control strategy? (fork the design, re-run, compare side by side)</li>
+  <li><b>Diagnosis:</b> Which SQL statements are slow and why? (database statistics + query plans + a rule-based advisor that proposes a fix you can apply in one click)</li>
+</ol>
+
+<h2>2. The database concepts behind it (plain language)</h2>
+<table>
+<tr><th style="width:24%">Concept</th><th>What it means</th><th style="width:30%">Where you see it in DataSim</th></tr>
+<tr><td><b>Transaction / ACID</b></td><td>A group of SQL steps that succeed or fail as one unit (Atomic), keep rules true (Consistent), do not trample each other (Isolated), and survive a crash (Durable).</td><td>Every workload "transaction" runs as a real <code>START TRANSACTION ... COMMIT</code>; a rejected registration rolls back completely.</td></tr>
+<tr><td><b>Isolation level</b></td><td>How much concurrent transactions can see of each other: READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ (MySQL default), SERIALIZABLE. Stronger = safer but slower.</td><td>"Isolation" selector in the top bar; changes the real MySQL session setting.</td></tr>
+<tr><td><b>Lost update</b></td><td>Two transactions read the same old value and both write back, so one change disappears. Still possible at REPEATABLE READ with plain SELECTs.</td><td>The <i>naive</i> strategy: overbooked sections, counters that disagree with reality.</td></tr>
+<tr><td><b>Locks, strict 2PL</b></td><td>InnoDB locks rows being changed and holds the locks until commit (strict two-phase locking), so others wait their turn.</td><td>Lock waits chart, lock list, wait-for graph.</td></tr>
+<tr><td><b>Gap / next-key locks</b></td><td>Locks on the "space between" index entries to stop phantom rows. Without a good index a query locks far more.</td><td>Concurrency Lab: index experiment.</td></tr>
+<tr><td><b>MVCC</b></td><td>Readers see an older consistent snapshot instead of blocking, so readers and writers do not block each other.</td><td>Explains why plain SELECT returns a stale seat count.</td></tr>
+<tr><td><b>Deadlock</b></td><td>Two transactions each hold a lock the other needs. InnoDB detects the cycle in its wait-for graph and kills one (error 1213); the app retries.</td><td>Transaction Stepper "Classic deadlock"; Bank Transfers template.</td></tr>
+<tr><td><b>Pessimistic / optimistic / atomic</b></td><td>Lock first (<code>SELECT ... FOR UPDATE</code>); or check a version number and retry on conflict; or let one SQL statement check and write together.</td><td>Strategy variants of each transaction (naive, pessimistic, optimistic, atomic, serializable).</td></tr>
+<tr><td><b>Index, query plan</b></td><td>An index turns a full table scan into a quick lookup. <code>EXPLAIN</code> shows what MySQL will do.</td><td>Advisor finding "Full table scan on section(slot)"; EXPLAIN drawer.</td></tr>
+<tr><td><b>Normalization</b></td><td>Organising tables to remove redundancy (1NF to BCNF) using functional dependencies; sometimes redundancy is kept on purpose and guarded by constraints.</td><td>Normalization assistant; the design of DataSim's own database.</td></tr>
+<tr><td><b>Constraints</b></td><td>PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, generated columns: the database itself refuses bad data.</td><td>Real DDL in the schema designer; "a strategy can live in the schema".</td></tr>
+</table>
+
+<h2>3. What we built: a tour of the screens</h2>
+<p>DataSim is a web application (a React front end and a Node.js back end) that talks to a real MySQL 8.4 server, a Redis cache and runs on one laptop with Docker. The left rail has four places: <b>Projects</b>, <b>Runs</b>, <b>Concurrency Lab</b> and <b>Stepper</b>; a green dot at the bottom shows MySQL/Redis health.</p>
+
+<h3>3.1 Projects</h3>
+<p>Home page. Start a blank design or one of four ready-made templates, and see every project with its last verdict (PASS/FAIL) and latency.</p>
+<figure><img src="projects.png"><figcaption>Projects: template cards and the project table.</figcaption></figure>
+
+<h3>3.2 Studio: the canvas where you design and run</h3>
+<p>This is the heart of the product. Drag Users, Load balancer, App server, Cache and Database onto the canvas and connect them. The connection rules are enforced as you drag (for example Users cannot connect straight to the Database; a toast explains why), just like Packet Tracer. Click a component to edit its settings in the right panel: number of users and think time, app instances/workers/pool size/retry policy, cache time-to-live, database isolation level and lock timeout. Undo/redo, autosave and saved "revisions" (immutable snapshots) are built in.</p>
+<figure><img src="studio-idle.png"><figcaption>Studio with the "Course Registration Rush" template: Students → Load balancer → App servers → Redis cache + MySQL.</figcaption></figure>
+<p>Two quick selectors in the top bar are the demo's main levers: <b>Strategy</b> (naive / pessimistic / optimistic / atomic / serializable) and <b>Isolation</b>. <b>Run</b> offers Load test, Capacity test and Compare strategies. While a run is active the nodes show live numbers (tps, p95, pool use, cache hit), animated dots flow along the connections, and the <b>bottleneck</b> component gets an amber/red border.</p>
+<figure><img src="studio-naive.png"><figcaption>A finished naive run: FAIL verdict, 45 invariant violations, the app server flagged as bottleneck, live charts for throughput, latency, errors and database load.</figcaption></figure>
+
+<h3>3.3 Schema Designer: real tables, not pictures</h3>
+<p>Double-click the Database node. You get an ER diagram (tables, key icons, foreign-key arrows with one/many ends), an editor for columns, types, keys, indexes, foreign keys, CHECK constraints and generated columns, and a <b>seed generator</b> per column (sequences, normal, zipf "popular items" distribution, names, patterns like <code>20BCE0001</code>, references to parent keys). The <b>DDL</b> tab shows the exact <code>CREATE TABLE</code> statements, and <b>Provision sandbox</b> really creates them in MySQL and fills them with data in a few seconds. Extras: import from pasted DDL, a read-only SQL console, and a <b>Normalization assistant</b>.</p>
+<figure><img src="schema-designer.png"><figcaption>Schema Designer showing the course-registration schema (six tables, 24,000 sections).</figcaption></figure>
+
+<h3>3.4 Workload Editor: what the users actually do</h3>
+<p>Double-click the Users node. A <b>workload</b> is a mix of transactions with weights, e.g. register 55%, search sections 35%, view timetable 10%. Each has parameter generators (which student, which section, popular sections chosen more often) and one or more <b>variants</b> (naive, pessimistic, optimistic, atomic, serializable): real SQL steps with optional <i>bind</i> (remember a row), <i>guard</i> (business rule such as "seats left?") and <i>expect-affected</i> (retry if the update changed 0 rows). <b>Test once</b> runs one instance inside a transaction that is rolled back and shows each step's rows, affected count and time: great for explaining what a strategy really does. <b>Invariants</b> are SQL checks that must return 0 violations, e.g. "no section has more enrollments than capacity".</p>
+<figure><img src="workload-editor.png"><figcaption>Workload Editor: transaction mix, parameters, variant tabs and SQL steps.</figcaption></figure>
+
+<h3>3.5 Run report: the evidence</h3>
+<p>After every run: verdict against the target (PASS/FAIL with reasons), KPI cards (throughput, p50/p95/p99, committed, rejected, errors, deadlocks, invariant violations, cache hit ratio), charts, a stacked bar of <b>where the time went</b> for every transaction, per-statement statistics with <code>EXPLAIN</code>, lock waits with a mini wait-for graph, invariant results, and <b>findings</b> from the advisor, each with evidence numbers, a short DBMS-theory explanation and, where possible, an <b>Apply fix</b> button that creates a new revision to re-run. Everything exports to Markdown / CSV.</p>
+<figure><img src="report-naive.png"><figcaption>Report of the naive run: invariant violated (lost update), full table scan on <code>section.slot</code>, SLO not met.</figcaption></figure>
+<figure><img src="studio-findings.png"><figcaption>The same findings inside the Studio's bottom panel, with Apply fix.</figcaption></figure>
+
+<h3>3.6 Capacity test and the Universal Scalability Law</h3>
+<p>One click ramps the number of users in steps (50, 150, 300, 450, 500 in the demo) and records throughput and latency at each step. DataSim finds the <b>knee</b> (where adding users stops adding throughput but latency jumps), fits the <b>Universal Scalability Law</b> curve <code>X(N) = λN / (1 + σ(N−1) + κN(N−1))</code> by least squares (σ = contention, κ = coherency cost), and prints a one-sentence verdict. The part of the curve beyond the tested load is drawn <b>dashed and tagged PROJECTED</b>; if no saturation was observed, DataSim says so instead of inventing a number.</p>
+<figure><img src="report-capacity.png"><figcaption>Capacity report: knee at 450 users, USL fit (R² 0.98), projected peak ~1,850 tps, app server flagged as the bottleneck.</figcaption></figure>
+
+<h3>3.7 Compare</h3>
+<p>Select 2 to 5 runs on the Runs page: side-by-side metrics with green/red deltas (direction aware: lower latency is better, more throughput is better), overlaid charts, invariant matrix, which findings appeared or disappeared, and a <b>design diff</b> (what changed between the two revisions: settings, nodes, schema, indexes).</p>
+<figure><img src="compare.png"><figcaption>Naive vs atomic: throughput +46%, p95 −78%, invariant violations 100% down.</figcaption></figure>
+
+<h3>3.8 Concurrency Lab and Transaction Stepper (from Review 1)</h3>
+<p>Kept from the first review because they are the clearest teaching tools. The <b>Concurrency Lab</b> races many clients at one shared resource under eight strategies (NAIVE, TXN_RR, SERIALIZABLE, PESSIMISTIC, OPTIMISTIC, CONSTRAINT, TRIGGER, REDIS_LEASE) and tabulates violations, retries, deadlocks and latency; it also has a lost-update experiment and an index experiment (lock footprint with and without an index). The <b>Transaction Stepper</b> runs two transactions <i>statement by statement</i> on two real connections and shows the live lock table from <code>performance_schema</code> and the wait-for graph; with the "Classic deadlock" scenario you press Next until MySQL reports a real error 1213 and the cycle lights up red.</p>
+<div class="cols"><figure><img src="lab.png"><figcaption>Concurrency Lab.</figcaption></figure><figure><img src="stepper.png"><figcaption>Transaction Stepper.</figcaption></figure></div>
+
+<h3>3.9 Convenience features</h3>
+<ul>
+<li><b>Command palette</b> (Ctrl+K): jump anywhere, run, add components, set strategy, export.</li>
+<li><b>Normalization assistant:</b> enter functional dependencies, get attribute closure, candidate keys, highest normal form with the violating dependencies, BCNF decomposition with a lossless-join check, 3NF synthesis, and "apply decomposition" to create the new tables.</li>
+<li><b>"Which database fits?"</b> card: a clearly labelled rule-based heuristic.</li>
+<li><b>Live invariant sampling:</b> during a run, a strip shows violations climbing in real time.</li>
+<li><b>Exports:</b> report (Markdown, CSV), DDL (.sql), canvas as PNG. Light and dark themes.</li>
+</ul>
+
+<h2>4. How it works inside</h2>
+<h3>4.1 The architecture</h3>
+<div class="flow">
+  <div class="n">Browser<small>React Studio, charts</small></div><span class="a">⇄</span>
+  <div class="n">Node.js API<small>Express + Socket.IO<br>zod validation</small></div><span class="a">→</span>
+  <div class="n">Run engine<small>virtual users, samplers, analysis</small></div><span class="a">→</span>
+  <div class="n">MySQL 8.4 sandbox<small>real tables per project</small></div>
+</div>
+<div class="flow">
+  <div class="n">Run engine</div><span class="a">→</span><div class="n">Redis 7<small>real cache</small></div>
+  <span style="width:20px"></span>
+  <div class="n">Run engine</div><span class="a">→</span><div class="n">MySQL "datasim" database<small>projects, revisions, runs, results</small></div>
+</div>
+<p>A shared package of <b>zod schemas</b> (the design document, schema model, workload, run report, socket events) is used by both the browser and the server, so both validate exactly the same data. The project has about <b>27,000 lines</b> of TypeScript/SQL (server ≈ 6,500, web ≈ 16,000, shared ≈ 1,200 plus tests).</p>
+
+<h3>4.2 What happens when you press Run</h3>
+<ol>
+<li><b>Validate</b> the design: connection rules, schema (keys, foreign keys), SQL checks (allowed statement types, placeholders resolve), and MySQL itself applies the DDL in a scratch schema to catch errors such as a bad CHECK.</li>
+<li><b>Provision the sandbox:</b> database <code>dsim_&lt;id&gt;</code> is dropped and created; real <code>CREATE TABLE</code> statements are applied; data is generated from a <i>seeded</i> random generator (same seed gives the same data every time: reproducible), inserted in batches of 1,000 rows (100,000 rows in about 2 s).</li>
+<li><b>Warm up</b> a few seconds, then <b>measure</b>.</li>
+<li><b>Virtual users</b> (1 to 500) each loop: choose a transaction by weight, generate parameters, send the request through the topology, wait "think time", repeat.</li>
+<li><b>Sample every second:</b> latency percentiles, throughput, errors, retries, queue depths, pool usage, and from MySQL itself: running threads, row-lock waits, buffer-pool reads, and snapshots of <code>performance_schema.data_lock_waits</code> for the wait-for graph.</li>
+<li><b>After the run:</b> check the invariants, read statement statistics (<code>events_statements_summary_by_digest</code>) and <code>EXPLAIN</code> each statement, run the advisor rules, detect the bottleneck, compute the verdict, and save everything in relational tables.</li>
+</ol>
+
+<h3>4.3 The path of one request</h3>
+<div class="flow">
+  <div class="n">Virtual user</div><span class="a">→</span><div class="n">link<small>emulated delay</small></div><span class="a">→</span>
+  <div class="n">Load balancer<small>round-robin / least-conn</small></div><span class="a">→</span>
+  <div class="n">App server<small>queue → worker<br>processing time</small></div><span class="a">→</span>
+  <div class="n">Cache?<small>real Redis</small></div><span class="a">→</span>
+  <div class="n">Connection pool<small>real mysql2 pool</small></div><span class="a">→</span>
+  <div class="n">MySQL<small>real transaction,<br>isolation, retries</small></div>
+</div>
+<p>If a statement hits a <b>deadlock</b> (error 1213) or <b>lock-wait timeout</b> (1205), or an optimistic update changes 0 rows, the app retries with back-off according to its retry policy. If a business <b>guard</b> fails ("no seats left"), the transaction is rolled back and counted as <i>rejected</i> (not an error). Each request records high-resolution timestamps at every step, so the "where the time went" bar is measured, not estimated.</p>
+
+<h3>4.4 Honesty: every number says where it came from</h3>
+<table>
+<tr><th style="width:17%">Tag</th><th>Meaning</th><th style="width:38%">Examples</th></tr>
+<tr><td><span class="pill m">MEASURED</span></td><td>Observed from MySQL or the real request path.</td><td>DB execution time, lock waits, deadlocks, rows examined, invariants, end-to-end latency, cache hit ratio.</td></tr>
+<tr><td><span class="pill e">EMULATED</span></td><td>An injected delay or modelled component that <i>really runs</i> in the request path (a real wait that holds users and creates real queueing).</td><td>Network latency between components, app processing time, the load balancer.</td></tr>
+<tr><td><span class="pill p">PROJECTED</span></td><td>A mathematical model fitted to measured data.</td><td>Capacity beyond the tested load (USL fit), drawn dashed.</td></tr>
+</table>
+<p>The cache is a <b>real Redis</b>; if Redis is not reachable, DataSim refuses to run instead of silently pretending. No placeholder data or random chart values are used anywhere.</p>
+
+<h3>4.5 Safety of user-written SQL</h3>
+<ul>
+<li>Workload SQL runs as a restricted MySQL user <code>dsim_runner</code> that can only <code>SELECT, INSERT, UPDATE, DELETE</code> inside <code>dsim_*</code> sandbox databases: no DDL, no access to DataSim's own database.</li>
+<li>Statements must start with SELECT / INSERT / UPDATE / DELETE / WITH; multi-statement strings are rejected; values are always bound parameters (no string concatenation).</li>
+<li>DDL is generated only by DataSim (identifiers validated and always quoted) and run by the admin connection.</li>
+<li>Only one run at a time (a global lock), so concurrent runs cannot distort each other's measurements.</li>
+</ul>
+
+<h3>4.6 The advisor (rule-based, not magic)</h3>
+<p>Rules look at the run's evidence: a <b>full table scan</b> (EXPLAIN access type ALL on ≥ 1,000 rows) → "add index on table(columns)" (one click); <b>invariant violated under naive</b> → use atomic or pessimistic; <b>hot-row contention</b> (lock waits concentrated on one key) → atomic update, sharded counter or queue; <b>deadlocks</b> → lock rows in a consistent order; <b>pool starvation</b> → bigger pool or more app instances (but not when lock waits dominate, because more connections only move the queue); <b>low cache hit ratio</b>; <b>SERIALIZABLE cost</b>. Each finding shows evidence numbers and a 2–3 sentence explanation using DBMS theory.</p>
+
+<h2>5. The demo story with real numbers</h2>
+<p>All numbers are from our test machine (a laptop, MySQL in Docker); exact values vary run to run, the <i>shape</i> is stable. Template: <b>Course Registration Rush</b>: 150 students, 20,000 student rows, 24,000 sections, 36 timetable slots.</p>
+<table>
+<tr><th>Step</th><th>What we do</th><th>What it shows (typical)</th></tr>
+<tr><td>1. Naive</td><td>Strategy = naive, Run</td><td>≈ 450 tps, p95 ≈ 300 ms, <b>FAIL</b>, ≈ 45 invariant violations: overbooked sections and wrong counters (lost update at REPEATABLE READ). Bottleneck flagged on the app servers.</td></tr>
+<tr><td>2. Atomic</td><td>Strategy = atomic, Run</td><td>≈ 650 tps, p95 ≈ 68 ms, <b>0 violations, PASS</b>. One statement checks and writes under one row lock.</td></tr>
+<tr><td>3. Compare</td><td>Runs → select both → Compare</td><td>Throughput +46%, p95 −78%, violations −100%, charts overlaid, "what changed: strategy naive → atomic".</td></tr>
+<tr><td>4. Advisor</td><td>Findings → Apply fix (add index on <code>section(slot)</code>) → Re-run</td><td>Statement average ≈ 6.5 → 1.8 ms; rows examined ≈ 25 million → ≈ 1.7 million; finding disappears.</td></tr>
+<tr><td>5. Capacity</td><td>Run → Capacity test (50…500 users)</td><td>Knee at 450 users; sustains ≈ 1,690 tps at p95 ≤ 200 ms up to ≈ 340 users; projected peak ≈ 1,850 tps (USL, R² ≈ 0.98).</td></tr>
+<tr><td>6. Review 1 tools</td><td>Lab: eight strategies; Stepper: classic deadlock</td><td>NAIVE and TXN_RR violate; PESSIMISTIC, OPTIMISTIC, SERIALIZABLE, CONSTRAINT, TRIGGER, REDIS_LEASE do not. Stepper shows a real errno 1213 and the wait-for cycle.</td></tr>
+</table>
+<div class="box warn"><b class="t">Honest note about the index step</b>The index clearly cuts the statement's cost and the rows MySQL reads. The end-to-end p95 improves less dramatically, because at high load the next bottleneck (contention on the popular sections) takes over. DataSim reports exactly that, which is a good talking point: <i>fixing one bottleneck reveals the next</i>.</div>
+
+<h3>The four templates</h3>
+<table>
+<tr><th style="width:26%">Template</th><th>Teaches</th></tr>
+<tr><td><b>Course Registration Rush</b> (flagship)</td><td>Overbooking / lost update, hot rows (popular sections), cache, missing index, capacity knee. Schema: department, student, faculty, course, section, enrollment (with a composite foreign key as controlled redundancy).</td></tr>
+<tr><td><b>Review 1: Shared Resource Allocation</b></td><td>The exact Review 1 schema: user_account, client, resource, allocation, operation_event; quota violations; composite FK; generated column + UNIQUE as a concurrency strategy.</td></tr>
+<tr><td><b>Flash Sale Checkout</b></td><td>Overselling hot products; a <code>CHECK (stock &gt;= 0)</code> is itself a concurrency strategy.</td></tr>
+<tr><td><b>Bank Transfers and Deadlocks</b></td><td>Unordered locking deadlocks; ordered locking (lowest id first) removes deadlocks; money conservation invariant.</td></tr>
+</table>
+
+<h2>6. DataSim's own database design</h2>
+<p>DataSim stores its own state in a MySQL database (<code>datasim</code>), designed in <b>3NF / BCNF</b>:</p>
+<table>
+<tr><th style="width:24%">Table</th><th>Purpose and key</th></tr>
+<tr><td><code>project</code>, <code>project_draft</code></td><td>A design and its autosaved current draft. PK <code>project_id</code>.</td></tr>
+<tr><td><code>design_revision</code></td><td>Immutable snapshots. PK <code>(project_id, revision_no)</code>, plus a second candidate key <code>(project_id, content_hash)</code> so identical designs are stored once.</td></tr>
+<tr><td><code>run</code></td><td>One execution: settings, totals, verdict. FK to the exact revision; self-FK for strategy-comparison children.</td></tr>
+<tr><td><code>run_sample</code>, <code>run_txn_stat</code>, <code>run_statement_stat</code>, <code>run_lock_wait</code>, <code>run_invariant</code>, <code>run_finding</code>, <code>capacity_point</code>, <code>capacity_fit</code></td><td>Child tables keyed by <code>(run_id, …)</code> with <code>ON DELETE CASCADE</code>: per-second samples, per-transaction stats, per-statement digests, lock waits, invariants, advisor findings, capacity steps, USL fit.</td></tr>
+</table>
+<ul>
+<li><b>Normalization argument:</b> every non-key attribute depends on the whole key and nothing but the key; the only extra candidate key is covered by the same superkey rule, so the tables are in BCNF.</li>
+<li><b>Why JSON is used only for the editor document:</b> the design (topology + schema + workload) is always read and written <i>whole</i> by the editor and never queried with SQL, so splitting it into a dozen tables would add joins and no benefit. Everything that is queried or compared (runs, samples, findings…) is relational.</li>
+<li><b>Controlled redundancy:</b> a few run totals are stored on <code>run</code> (written once at the end) so the Runs list does not aggregate thousands of rows; this is documented and never updated afterwards.</li>
+</ul>
+
+<h2>7. How we built it</h2>
+<h3>7.1 Technology</h3>
+<table>
+<tr><th style="width:22%">Layer</th><th>Choice and why</th></tr>
+<tr><td>Database</td><td><b>MySQL 8.4 / InnoDB</b> (committed in Review 1): row locks, MVCC, selectable isolation, FKs, CHECK constraints, generated columns, <code>performance_schema</code> lock tables; <b>Redis 7</b> as the real cache; both in Docker.</td></tr>
+<tr><td>Server</td><td>Node.js, TypeScript, Express, Socket.IO (live events), <code>mysql2</code> (real pools), <code>ioredis</code>, zod. The random generator, data generators, Universal Scalability Law fit and normalization algorithms are hand-written (no heavy libraries).</td></tr>
+<tr><td>Web</td><td>React + Vite + Tailwind, React Flow (canvas), zustand + zundo (state and undo/redo), recharts, CodeMirror (SQL editor), Radix (accessible components). Fonts bundled: works offline.</td></tr>
+<tr><td>Quality</td><td>vitest, supertest (API against the real MySQL), Playwright end-to-end tests in a real browser.</td></tr>
+</table>
+
+<h3>7.2 Process</h3>
+<ol>
+<li><b>Foundations:</b> shared contracts (zod), the meta-schema migration, restricted SQL user, new app shell and design system, <code>npm run demo</code> / <code>npm run doctor</code>.</li>
+<li><b>Core in parallel:</b> run engine; projects, revisions, templates; Studio canvas; schema and workload editors, each with strict file ownership.</li>
+<li><b>Vertical-slice gate:</b> an automated test drives the browser through "naive violates → atomic is clean → compare" before anything else was built.</li>
+<li><b>Depth:</b> report, runs, compare, capacity; Lab and Stepper redesigned; normalization assistant, command palette, SQL console, live invariants.</li>
+<li><b>QA:</b> an independent reviewer walked the whole demo script through the real UI and found ~45 issues; the important ones were fixed (for example: a PASS verdict while data was corrupted now correctly shows FAIL; the capacity projection no longer prints impossible peaks; missing bottleneck flag).</li>
+</ol>
+<h3>7.3 How it is verified</h3>
+<table>
+<tr><th style="width:34%">Check</th><th>Result</th></tr>
+<tr><td>Unit and integration tests (shared / server / web)</td><td>19 / 183 / 192 passing (server tests run against the real MySQL and Redis)</td></tr>
+<tr><td>End-to-end browser flows (Playwright)</td><td>7 passing: naive-vs-atomic-vs-compare, schema designer, workload editor, capacity + USL, index advisor, Lab, Stepper</td></tr>
+<tr><td>Type checking and production build</td><td>Clean</td></tr>
+<tr><td>Browser console</td><td>No errors on any screen in the e2e flows</td></tr>
+<tr><td>Independent review</td><td>Whole demo script run step by step; numbers in the UI matched the API</td></tr>
+</table>
+
+<h2>8. Mapping to Review 1</h2>
+<p>Review 1 promised a "focused learning simulator such as Cisco Packet Tracer" for concurrency in MySQL/InnoDB. v2 is a return to that promise, with real tables:</p>
+<table>
+<tr><th style="width:36%">Review 1 item</th><th>Where it lives now</th></tr>
+<tr><td>Strategies: naive, transactions, serializable, pessimistic, optimistic, unique constraint, trigger, Redis lease</td><td>Concurrency Lab (all eight) + strategy variants + schema forks (CONSTRAINT)</td></tr>
+<tr><td>Transaction Stepper, Concurrency Lab</td><td>Kept, redesigned: <i>Stepper</i> and <i>Concurrency Lab</i> pages</td></tr>
+<tr><td>Simulation control room with virtual users</td><td>Studio runs (1–500 virtual users, load patterns)</td></tr>
+<tr><td>Lock and wait-for views, invariant checks</td><td>Stepper, report lock waits and graph, invariants</td></tr>
+<tr><td>Entities USER_ACCOUNT, CLIENT, RESOURCE, ALLOCATION, OPERATION_EVENT</td><td>Template "Review 1: Shared Resource Allocation" (exact keys and constraints)</td></tr>
+<tr><td>EXPERIMENT_RUN, persisted experiments, CSV/Markdown export</td><td><code>run</code> + child tables; exports in the report and the Lab</td></tr>
+</table>
+<p class="small">Partial / changed items (stated honestly in <code>docs/REVIEW1_TRACEABILITY.md</code>): pause/resume of a crowd is replaced by start/cancel; the v1 live lease-reaper service was retired; there is no per-account event timeline view.</p>
+
+<h2>9. Likely questions and short answers</h2>
+<table>
+<tr><th style="width:36%">Question</th><th>Answer</th></tr>
+<tr><td>Why real tables instead of a simulation?</td><td>A simulator that models locks in code only shows the author's model. Real tables give real indexes, real optimizer plans, real lock waits and real deadlocks. (Version 1 stored rows as JSON blobs, so it could not show any of that.)</td></tr>
+<tr><td>How is latency measured, and what is emulated?</td><td>Timestamps at queue, link, app, pool and DB phases. Database time and end-to-end latency are measured; network delay, app processing time and the load balancer are emulated as real waits in the request path. Capacity beyond the tested load is projected and labelled so.</td></tr>
+<tr><td>Why does naive overbook even at REPEATABLE READ?</td><td>The plain SELECT reads an old snapshot (MVCC); two transactions both pass the check and both write: a lost update. The fix is to make check-and-write atomic or to lock the row first.</td></tr>
+<tr><td>How does the index advisor work?</td><td>EXPLAIN of every statement plus rows-examined statistics; a full scan over ≥ 1,000 rows triggers "add index on the filtered columns", applied as a new revision and re-run. It is rule-based, not a cost model.</td></tr>
+<tr><td>What is a deadlock and how is it handled?</td><td>A cycle in the wait-for graph. InnoDB detects it, rolls back one victim (error 1213), the app retries; consistent lock ordering prevents it (Bank template).</td></tr>
+<tr><td>What is the USL?</td><td><code>X(N) = λN / (1 + σ(N−1) + κN(N−1))</code>: σ models contention, κ coherency cost; the peak is at <code>N* = √((1−σ)/κ)</code>. We fit σ, κ to measured steps and mark the projection dashed.</td></tr>
+<tr><td>How is user SQL kept safe?</td><td>Restricted MySQL user on sandbox databases only, verb whitelist, no multi-statements, bound parameters, DDL only generated by DataSim.</td></tr>
+<tr><td>Limitations?</td><td>One MySQL node (no replication); load generator, API and MySQL share one laptop, so absolute numbers are relative, not benchmarks; emulated network/app are models; advisor is rule-based; bounded workload (≤ 500 users); run-to-run variance is real (the shape is stable, not the exact numbers).</td></tr>
+<tr><td>Future work?</td><td>Read replica with GTID replication and replication-lag measurement; PostgreSQL adapter; cost-based index recommendations.</td></tr>
+</table>
+<p class="small">A longer list of 25 viva questions with answers is in <code>docs/VIVA.md</code>.</p>
+
+<h2>10. How to run it</h2>
+<pre>npm ci
+npm run demo        # starts Docker (MySQL + Redis), API and web; prints http://localhost:5173/DataSim/
+npm run doctor      # checks Docker, ports, MySQL, performance_schema, Redis, runner user
+npm run demo:prime  # optional: pre-runs the demo so reports exist as a fallback
+npm test            # unit + integration tests     npm run e2e   # browser tests</pre>
+<p>The 6–8 minute live demo script (exact clicks, talking points, expected numbers, fallback) is <code>docs/DEMO.md</code>.</p>
+
+<h2>11. Glossary</h2>
+<table>
+<tr><td style="width:22%"><b>Virtual user (VU)</b></td><td>A simulated person who repeatedly picks an action, waits (think time) and repeats.</td></tr>
+<tr><td><b>TPS</b></td><td>Transactions per second (throughput).</td></tr>
+<tr><td><b>p50 / p95 / p99</b></td><td>Latency below which 50% / 95% / 99% of requests finished; p95 = "slow-end experience".</td></tr>
+<tr><td><b>SLO</b></td><td>Service-level objective: a target such as "p95 ≤ 200 ms and errors ≤ 1%".</td></tr>
+<tr><td><b>Invariant</b></td><td>A rule that must always hold, checked by SQL (0 violations = pass).</td></tr>
+<tr><td><b>Connection pool</b></td><td>A fixed set of reusable database connections; when all are busy, requests wait (pool starvation).</td></tr>
+<tr><td><b>Knee</b></td><td>The load where throughput stops growing while latency rises sharply.</td></tr>
+<tr><td><b>Revision</b></td><td>An immutable saved snapshot of a design; every run records which revision it ran.</td></tr>
+<tr><td><b>Zipf distribution</b></td><td>"A few items are very popular": models the hot sections everyone wants.</td></tr>
+<tr><td><b>Sandbox</b></td><td>The throw-away MySQL database DataSim creates for a run.</td></tr>
+</table>
+
+</body>
+</html>

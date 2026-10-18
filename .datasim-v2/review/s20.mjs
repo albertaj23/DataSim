@@ -1,0 +1,10 @@
+import {launch,BASE,sleep,idle} from './lib.mjs';
+const {page,shot,done}=await launch();
+await idle();
+await page.goto(BASE); await sleep(800);
+await page.getByRole('link',{name:/Stepper/i}).click(); await sleep(2000);
+await shot('110-stepper-idle'); console.log(page.url());
+console.log(await page.locator('main').innerText().then(t=>t.slice(0,1200)));
+console.log(await page.locator('main button').allInnerTexts());
+console.log(await page.getByRole('combobox').allInnerTexts());
+await done('s20');

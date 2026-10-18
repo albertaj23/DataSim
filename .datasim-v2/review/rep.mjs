@@ -1,0 +1,10 @@
+import {launch,BASE,sleep,SC} from './lib.mjs';
+const [,, rid, tag]=process.argv;
+const {page,shot,done}=await launch();
+await page.goto(BASE+'runs/'+rid); await sleep(3500);
+await page.screenshot({path:SC+tag+'-top.png'});
+const full=page.locator('main').first();
+const h=await page.evaluate(()=>{const els=[...document.querySelectorAll('*')].filter(e=>e.scrollHeight>e.clientHeight+50&&getComputedStyle(e).overflowY!='visible'&&e.clientHeight>400);return els.map(e=>[e.tagName,e.className.toString().slice(0,60),e.scrollHeight,e.clientHeight])});
+console.log(h);
+console.log(await page.locator('body').innerText());
+await done('report '+tag);

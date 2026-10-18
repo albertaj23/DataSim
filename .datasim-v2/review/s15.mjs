@@ -1,0 +1,11 @@
+import {launch,BASE,sleep,idle} from './lib.mjs';
+import fs from 'node:fs';
+const pid=fs.readFileSync('.datasim-v2/review/pid.txt','utf8');
+const {page,shot,done}=await launch();
+await idle();
+await page.goto(BASE+'p/'+pid); await sleep(2000);
+await page.getByRole('button',{name:'Run options'}).click(); await sleep(400); await shot('80-run-menu');
+console.log(await page.getByRole('menuitem').allInnerTexts());
+await page.getByRole('menuitem',{name:/Capacity test/}).click(); await sleep(1500);
+await shot('81-capacity-dialog?'); console.log(await page.locator('[role=dialog]').allInnerTexts());
+await done('s15');

@@ -1,6 +1,6 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { appPool } from '../src/db/pool.js';
-import type { ConflictPolicy } from '../src/services/playback.js';
+type ConflictPolicy = 'REJECT' | 'TAKEOVER' | 'ASK';
 
 export async function accountId(username: string): Promise<number> {
   const [rows] = await appPool.query<RowDataPacket[]>('SELECT account_id FROM account WHERE username = ?', [username]);

@@ -5,7 +5,7 @@ import { NamedLockBusyError } from '../db/namedLock.js';
 import { checkInvariant } from '../lab/invariant.js';
 import { engine, scenarioList } from '../lab/stepper/engine.js';
 import { readLocks } from '../lab/stepper/locks.js';
-import { ServiceError } from '../services/playback.js';
+import { ServiceError } from '../services/liveStrategy.js';
 import { asyncHandler } from './http.js';
 
 export const stepperRouter = Router();
